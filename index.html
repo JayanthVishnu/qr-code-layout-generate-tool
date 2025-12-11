@@ -68,7 +68,13 @@
 
       <!-- SECTION 4: Data Injection -->
       <div class="sidebar-section" style="flex:1; border-bottom:none;">
-        <div class="sidebar-title">Test Data (JSON)</div>
+        <div class="sidebar-title" style="display:flex; justify-content:space-between; align-items:center;">
+          Test Data (JSON)
+          <label for="file-upload" class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            Upload JSON
+            <input type="file" id="file-upload" accept=".json" style="display:none;">
+          </label>
+        </div>
         <textarea id="data-input" style="height: 200px; font-family: monospace;">{
   "name": "John Doe",
   "role": "Speaker",

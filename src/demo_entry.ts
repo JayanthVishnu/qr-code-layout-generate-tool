@@ -287,6 +287,32 @@ function setupGlobalListeners() {
         alert("Layout JSON exported to console!");
     });
 
+    // File Upload
+    document.getElementById("file-upload")?.addEventListener("change", (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const text = evt.target?.result as string;
+            if (text) {
+                // Validate JSON
+                try {
+                    JSON.parse(text); // Just to check if valid
+                    dataInput.value = text;
+                    currentDataIndex = 0; // Reset pagination
+                    updatePreview();
+                } catch (err) {
+                    alert("Invalid JSON file");
+                    console.error(err);
+                }
+            }
+        };
+        reader.readAsText(file);
+        // Clear value so same file can be selected again
+        (e.target as HTMLInputElement).value = "";
+    });
+
     // Pagination
     document.getElementById("btn-prev-data")?.addEventListener("click", () => {
         const data = getData();
