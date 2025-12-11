@@ -282,11 +282,6 @@ function setupGlobalListeners() {
 
     document.getElementById("btn-render")?.addEventListener("click", updatePreview);
 
-    document.getElementById("btn-export-json")?.addEventListener("click", () => {
-        console.log(JSON.stringify(currentLayout, null, 2));
-        alert("Layout JSON exported to console!");
-    });
-
     // File Upload
     document.getElementById("file-upload")?.addEventListener("change", (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
