@@ -26,3 +26,4 @@ build/
 # OS/Editor files
 .DS_Store
 Thumbs.
+.npmrc

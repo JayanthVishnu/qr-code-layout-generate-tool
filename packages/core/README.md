@@ -11,7 +11,7 @@ npm install @qrlayout/core
 ## Quick start
 
 ```ts
-import { StickerPrinter, type StickerLayout } from "@qrlayout/core";
+import { StickerPrinter, type StickerLayout } from "@shashi089/qrlayout-core";
 
 const layout: StickerLayout = {
   id: "layout-1",
@@ -93,7 +93,7 @@ interface StickerLayout {
 PDF export is isolated in a separate entry so users can avoid the `jspdf` dependency unless needed.
 
 ```ts
-import { exportToPDF } from "@qrlayout/core/pdf";
+import { exportToPDF } from "@shashi089/qrlayout-core/pdf";
 ```
 
 If `jspdf` is not installed, `StickerPrinter.exportToPDF()` will throw a clear error.

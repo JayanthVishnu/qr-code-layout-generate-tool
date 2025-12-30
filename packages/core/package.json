@@ -1,7 +1,8 @@
 {
-  "name": "@qrlayout/core",
+  "name": "@shashi089/qrlayout-core",
   "version": "1.0.0",
   "description": "QR sticker layout builder/renderer/exporter core",
+  "author": "Shashidhar Naik <shashidharnaik8@gmail.com>",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -20,6 +21,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"
   },
