@@ -56,7 +56,10 @@ export function MasterModule({ type, icon }: MasterModuleProps) {
         if (savedLayouts) {
             const parsed: SavedLayout[] = JSON.parse(savedLayouts);
             // Only show layouts matching this entity type
-            const filtered = parsed.filter(l => l.targetEntity === type);
+            // Fallback: If no targetEntity is set, assume it's for employees (legacy support)
+            const filtered = parsed.filter(l =>
+                l.targetEntity === type || (!l.targetEntity && type === 'employee')
+            );
             setLayouts(filtered);
             if (filtered.length > 0) setSelectedLayoutId(filtered[0].id);
         }

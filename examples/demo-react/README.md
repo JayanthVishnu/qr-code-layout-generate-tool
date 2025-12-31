@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# QR Layout Studio - React Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This application is a comprehensive reference implementation of the **[`qrlayout-core`](../../packages/core)** package. It demonstrates how to build a high-performance, visual QR code layout designer and management system using React, TypeScript, and Material UI.
 
-Currently, two official plugins are available:
+##  Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The **React Demo** serves as a "Ready-to-Use" playground and a boilerplate for developers who want to integrate QR sticker generation into their own business applications. It moves beyond simple generation by providing a full-blown **Visual Editor** with drag-and-drop capabilities.
 
-## React Compiler
+##  Key Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Visual Layout Designer
+- **Drag-and-Resize**: Intuitively move and scale elements (Text and QR codes) directly on a live canvas.
+- **Advanced Text Alignment**: Precise control over placement with both **Horizontal** (Left, Center, Right) and **Vertical** (Top, Middle, Bottom) alignment.
+- **Live Dynamic Data Preview**: Uses localized Indian sample data (e.g., *Rajesh Sharma*) to show exactly how your stickers will look with real values.
 
-## Expanding the ESLint configuration
+### 2. Multi-Entity Architecture
+The designer is schema-driven, allowing you to manage different types of data:
+- **Employees**: For ID cards and badges.
+- **Vendors**: For supplier tracking and shipping labels.
+- **Machines**: For asset management and maintenance logs.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 3. Professional Export Options
+- **PNG/JPEG**: High-quality images for web use or digital sharing.
+- **PDF**: Print-ready documents with precise scaling.
+- **ZPL**: Generate raw code for industrial **Zebra** thermal printers.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Industry Use Cases
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+This tool is highly versatile and can be used in various market segments:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Manufacturing & Logistics**: Tagging machinery with maintenance QR codes or labeling warehouse bins for inventory management.
+- **Corporate & Events**: Generating professional visitor passes and employee ID cards on the fly.
+- **Retail**: Creating price tags and product labels that link to digital catalogs or tracking systems.
+- **Healthcare**: Labeling equipment or patient records with unique identifiers for quick scanning.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## How it works with `qrlayout-core`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+This demo showcases the power of the core library by:
+1. **Defining Layouts**: Converting the visual state of the designer into a `StickerLayout` JSON object.
+2. **Rendering**: Using `StickerPrinter.renderToCanvas` for the real-time editor preview.
+3. **Exporting**: Leveraging the library's built-in PDF and ZPL exporters to handle the heavy lifting of document generation.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+##  Open Source & Contributions
+
+This project is **Open Source**. We believe in the power of community collaboration!
+
+- **Use it freely**: Fork this code and use it in your own commercial or private projects.
+- **Suggest Updates**: Found a bug or have a feature idea (like Barcode support or cloud syncing)? Open an issue or a PR.
+- **Improve the Core**: Contributions to the rendering logic in `qrlayout-core` are also highly welcome.
+
+##  Getting Started
+
+1. Navigate to this directory: `cd examples/demo-react`
+2. Install dependencies: `npm install`
+3. Run the dev server: `npm run dev`
+
+---
+

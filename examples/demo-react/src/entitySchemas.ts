@@ -16,10 +16,10 @@ export const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
             { name: "place", label: "Place" },
         ],
         sampleData: {
-            name: "John Doe",
-            employeeId: "EMP001",
+            name: "Rajesh Sharma",
+            employeeId: "EMP-001",
             designation: "Software Engineer",
-            place: "Bangalore",
+            place: "Mumbai",
         },
     },
     vendor: {
@@ -31,9 +31,9 @@ export const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
             { name: "category", label: "Category" },
         ],
         sampleData: {
-            vendorName: "Acme Corp",
-            vendorCode: "VND-1001",
-            contactPerson: "Mike Ross",
+            vendorName: "Bharat Enterprises",
+            vendorCode: "VND-2002",
+            contactPerson: "Amit Patel",
             category: "Manufacturing",
         },
     },
@@ -49,7 +49,7 @@ export const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
             machineName: "CNC Router",
             machineId: "MAC-05",
             model: "Dyna-400",
-            installationDate: "2023-05-12",
+            installationDate: "2024-01-15",
         },
     },
 };

@@ -20,7 +20,7 @@ import {
     ToggleButton,
     ToggleButtonGroup,
 } from '@mui/material';
-import { Plus, Trash, Edit2, Layout as LayoutIcon, Type, QrCode, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { Plus, Trash, Edit2, Layout as LayoutIcon, Type, QrCode, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical } from 'lucide-react';
 import { StickerPrinter } from 'qrlayout-core';
 import type { SavedLayout, EntityType } from '../types';
 import { ReusableTable } from '../components/ReusableTable';
@@ -38,17 +38,23 @@ export function LayoutModule() {
 
     const [pxPerUnit, setPxPerUnit] = useState(1);
     const [testData, setTestData] = useState<any>({
-        name: 'John Doe',
-        employeeId: 'EMP001',
-        designation: 'Software Engineer',
-        place: 'Bangalore'
+        name: 'Rajesh Sharma',
+        employeeId: 'EMP-101',
+        designation: 'Senior Architect',
+        place: 'Mumbai'
     });
 
     // Load from local storage and add defaults
     useEffect(() => {
         const saved = localStorage.getItem('qr-layouts');
         if (saved) {
-            setLayouts(JSON.parse(saved));
+            const parsed: SavedLayout[] = JSON.parse(saved);
+            // Migration: Ensure all legacy layouts have targetEntity='employee'
+            const migrated = parsed.map(l => ({
+                ...l,
+                targetEntity: l.targetEntity || 'employee'
+            }));
+            setLayouts(migrated);
         } else {
             const defaults: SavedLayout[] = [
                 {
@@ -178,6 +184,39 @@ export function LayoutModule() {
         document.addEventListener('mouseup', onMouseUp);
     };
 
+    const handleResizeStart = (e: React.MouseEvent, id: string) => {
+        if (view !== 'edit' || !currentLayout) return;
+        e.preventDefault();
+        e.stopPropagation(); // Don't trigger drag
+        setSelectedElementId(id);
+
+        const element = currentLayout.elements.find(el => el.id === id);
+        if (!element) return;
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialW = element.w;
+        const initialH = element.h;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const dw = (moveEvent.clientX - startX) / pxPerUnit;
+            const dh = (moveEvent.clientY - startY) / pxPerUnit;
+
+            updateElement(id, {
+                w: Math.max(1, Math.round((initialW + dw) * 10) / 10),
+                h: Math.max(1, Math.round((initialH + dh) * 10) / 10),
+            });
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
     const columns: GridColDef[] = [
         { field: 'name', headerName: 'Layout Name', flex: 1 },
         { field: 'width', headerName: 'Width', width: 100 },
@@ -215,9 +254,9 @@ export function LayoutModule() {
                     </Box>
                 </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={3} sx={{ height: 'calc(100vh - 160px)', overflow: 'hidden' }}>
                     {/* LEFT PANEL: CONFIG & ELEMENTS */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 3 }} sx={{ height: '100%', overflowY: 'auto', pr: 1 }}>
                         <Stack spacing={3}>
                             <Paper sx={{ p: 2 }}>
                                 <Typography variant="h6" gutterBottom>Configuration</Typography>
@@ -331,7 +370,7 @@ export function LayoutModule() {
                                 <TextField
                                     fullWidth
                                     multiline
-                                    rows={3}
+                                    rows={12}
                                     size="small"
                                     label="Test Data (JSON)"
                                     value={JSON.stringify(testData, null, 2)}
@@ -383,7 +422,25 @@ export function LayoutModule() {
                                                     backgroundColor: 'rgba(37, 99, 235, 0.05)'
                                                 }
                                             }}
-                                        />
+                                        >
+                                            {selectedElementId === el.id && (
+                                                <Box
+                                                    onMouseDown={(e) => handleResizeStart(e, el.id)}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        right: -5,
+                                                        bottom: -5,
+                                                        width: 10,
+                                                        height: 10,
+                                                        backgroundColor: '#2563eb',
+                                                        cursor: 'nwse-resize',
+                                                        borderRadius: '50%',
+                                                        zIndex: 2,
+                                                        border: '2px solid #fff'
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
                                     ))}
                                 </Box>
                             </Box>
@@ -394,8 +451,8 @@ export function LayoutModule() {
                     </Grid>
 
                     {/* RIGHT PANEL: PROPERTIES */}
-                    <Grid size={{ xs: 12, md: 3 }}>
-                        <Paper sx={{ p: 2, height: '100%' }}>
+                    <Grid size={{ xs: 12, md: 3 }} sx={{ height: '100%', overflowY: 'auto', pl: 1 }}>
+                        <Paper sx={{ p: 2, minHeight: '100%' }}>
                             <Typography variant="h6" gutterBottom>Properties</Typography>
                             <Divider sx={{ mb: 2 }} />
 
@@ -446,19 +503,34 @@ export function LayoutModule() {
                                             <TextField fullWidth label="Font Size" type="number" size="small" value={selectedElement.style?.fontSize || 12}
                                                 onChange={(e) => updateElement(selectedElement.id, { style: { ...selectedElement.style, fontSize: Number(e.target.value) } })} />
 
-                                            <Box>
-                                                <Typography variant="subtitle2" gutterBottom>Alignment</Typography>
-                                                <ToggleButtonGroup
-                                                    value={selectedElement.style?.textAlign || 'left'}
-                                                    exclusive
-                                                    size="small"
-                                                    onChange={(_, val) => val && updateElement(selectedElement.id, { style: { ...selectedElement.style, textAlign: val } })}
-                                                >
-                                                    <ToggleButton value="left"><AlignLeft size={16} /></ToggleButton>
-                                                    <ToggleButton value="center"><AlignCenter size={16} /></ToggleButton>
-                                                    <ToggleButton value="right"><AlignRight size={16} /></ToggleButton>
-                                                </ToggleButtonGroup>
-                                            </Box>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 6 }}>
+                                                    <Typography variant="caption" color="textSecondary" display="block">Horizontal Align</Typography>
+                                                    <ToggleButtonGroup
+                                                        value={selectedElement.style?.textAlign || 'left'}
+                                                        exclusive
+                                                        size="small"
+                                                        onChange={(_, val) => val && updateElement(selectedElement.id, { style: { ...selectedElement.style, textAlign: val } })}
+                                                    >
+                                                        <ToggleButton value="left" title="Left"><AlignLeft size={16} /></ToggleButton>
+                                                        <ToggleButton value="center" title="Center"><AlignCenter size={16} /></ToggleButton>
+                                                        <ToggleButton value="right" title="Right"><AlignRight size={16} /></ToggleButton>
+                                                    </ToggleButtonGroup>
+                                                </Grid>
+                                                <Grid size={{ xs: 6 }}>
+                                                    <Typography variant="caption" color="textSecondary" display="block">Vertical Align</Typography>
+                                                    <ToggleButtonGroup
+                                                        value={selectedElement.style?.verticalAlign || 'top'}
+                                                        exclusive
+                                                        size="small"
+                                                        onChange={(_, val) => val && updateElement(selectedElement.id, { style: { ...selectedElement.style, verticalAlign: val } })}
+                                                    >
+                                                        <ToggleButton value="top" title="Top"><AlignStartVertical size={16} /></ToggleButton>
+                                                        <ToggleButton value="middle" title="Middle"><AlignCenterVertical size={16} /></ToggleButton>
+                                                        <ToggleButton value="bottom" title="Bottom"><AlignEndVertical size={16} /></ToggleButton>
+                                                    </ToggleButtonGroup>
+                                                </Grid>
+                                            </Grid>
 
                                             <FormControl fullWidth size="small">
                                                 <InputLabel>Font Weight</InputLabel>
