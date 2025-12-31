@@ -1,0 +1,24 @@
+{
+  "name": "@shashi089/qrlayout-ui",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shashi089/qr-code-layout-generate-tool.git",
+    "directory": "packages/ui"
+  },
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "qrlayout-core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^7.2.7"
+  }
+}
