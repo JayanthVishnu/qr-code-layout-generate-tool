@@ -14,6 +14,7 @@ import {
   CssBaseline,
   ThemeProvider,
   createTheme,
+  Button,
 } from '@mui/material';
 import { Layout as LayoutIcon, Users, Store, Cpu } from 'lucide-react';
 import { LayoutModule } from './modules/LayoutModule';
@@ -72,6 +73,14 @@ function App() {
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 1 }}>
               <LayoutIcon size={24} /> QR Layout Studio Demo
             </Typography>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => localStorage.clear()}
+            >
+              Clear Data
+            </Button>
           </Toolbar>
         </AppBar>
         <Drawer

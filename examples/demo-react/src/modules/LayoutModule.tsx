@@ -66,25 +66,14 @@ export function LayoutModule() {
                     backgroundColor: '#ffffff',
                     targetEntity: 'employee',
                     elements: [
-                        { id: 't1', type: 'text', x: 5, y: 5, w: 90, h: 8, content: 'VISITOR PASS', style: { textAlign: 'center', fontWeight: 'bold' } },
-                        { id: 'q1', type: 'qr', x: 35, y: 15, w: 30, h: 30, content: 'https://example.com' },
+                        { id: 't1', type: 'text', x: 5, y: 5, w: 90, h: 8, content: 'VISITOR PASS', style: { textAlign: 'center', fontWeight: 'bold', verticalAlign: "middle" } },
+                        { id: 't2', type: 'text', x: 4, y: 18, w: 60, h: 8, content: "{{name}}", style: { textAlign: 'center', fontWeight: 'bold', verticalAlign: "middle" } },
+                        { id: 't3', type: 'text', x: 4, y: 28, w: 60, h: 8, content: "{{designation}}", style: { textAlign: 'center', fontWeight: 'bold', verticalAlign: "middle" } },
+                         { id: 't4', type: 'text', x: 4, y: 38, w: 60, h: 8, content: "{{place}}", style: { textAlign: 'center', fontWeight: 'bold', verticalAlign: "middle" } },
+                        { id: 'q1', type: 'qr', x: 64, y: 18, w: 30, h: 30, content: "{{employeeId}}" },
                     ],
                     isDefault: true,
                 },
-                {
-                    id: '2',
-                    name: 'Small Sticker',
-                    width: 50,
-                    height: 25,
-                    unit: 'mm',
-                    backgroundColor: '#ffffff',
-                    targetEntity: 'employee',
-                    elements: [
-                        { id: 'q1', type: 'qr', x: 5, y: 2, w: 20, h: 20, content: 'SKU-001' },
-                        { id: 't1', type: 'text', x: 27, y: 10, w: 20, h: 5, content: 'SKU-001' },
-                    ],
-                    isDefault: true,
-                }
             ];
             setLayouts(defaults);
             localStorage.setItem('qr-layouts', JSON.stringify(defaults));
