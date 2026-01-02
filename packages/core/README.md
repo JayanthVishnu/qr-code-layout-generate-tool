@@ -15,7 +15,7 @@ A powerful, framework-agnostic engine for designing and printing QR code sticker
 ## Live Demo & Examples
 
 - **[Interactive React Demo](https://qr-layout-design-react-demo.netlify.app/)**: A full-featured designer built with this package.
-- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/examples/demo-react)**: Reference implementation for monorepo usage.
+- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/demo-react)**: Reference implementation for monorepo usage.
 
 ## Installation
 
