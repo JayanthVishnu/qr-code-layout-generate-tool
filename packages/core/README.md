@@ -9,7 +9,7 @@ A powerful, framework-agnostic QR code layout engine for designing and printing 
 
 -  **Precise Layouts**: Define stickers in `mm`, `cm`, `in`, or `px`.
 -  **Multiple Formats**: Export to Canvas (preview), PNG/JPEG (image), PDF (print), or ZPL (industrial thermal printers).
--  **Dynamic Content**: Use variable placeholders (e.g., `{{name}}`, `{{sku}}`) to batch generate unique stickers.
+-  **Dynamic Content**: Use variable placeholders (e.g., `{{name}}`, `{{visitorId}}`) to batch generate unique stickers.
 -  **Lightweight**: Minimal dependencies. PDF export is optional to keep bundle size small.
 
 ## Keywords
@@ -125,19 +125,31 @@ pdfDoc.save("badges.pdf");
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `id` | `string` | Unique identifier for the layout. |
+| `name` | `string` | Human-readable name of the layout. |
 | `width` | `number` | Width of the sticker. |
 | `height` | `number` | Height of the sticker. |
 | `unit` | `"mm" \| "cm" \| "in" \| "px"` | Unit of measurement. |
 | `elements` | `StickerElement[]` | List of items on the sticker. |
+| `backgroundColor` | `string` | (Optional) Background color hex. |
+| `backgroundImage` | `string` | (Optional) Background image URL. |
 
 ### `StickerElement` Interface
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `id` | `string` | Unique identifier for the element. |
 | `type` | `"text" \| "qr"` | Type of element. |
 | `x`, `y` | `number` | Position from top-left. |
 | `w`, `h` | `number` | Width and height. |
 | `content` | `string` | Text, URL, source. Supports `{{key}}` syntax. |
+| `style.fontFamily` | `string` | Font family (e.g., 'sans-serif', 'Inter'). |
+| `style.fontSize` | `number` | Font size (px). |
+| `style.fontWeight` | `string \| number` | Font weight (e.g., 'bold', 700). |
+| `style.textAlign` | `"left" \| "center" \| "right"` | Horizontal alignment. |
+| `style.verticalAlign` | `"top" \| "middle" \| "bottom"` | Vertical alignment. |
+| `style.color` | `string` | Text color hex code. |
+| `style.backgroundColor` | `string` | Background color for the element. |
 
 ## License
 
