@@ -125,12 +125,27 @@ function selectElement(id: string | null) {
     renderElementsList();
     renderPropertyPanel();
     updateEditorOverlay();
+
+    // Auto-show right sidebar on mobile if an element is selected
+    if (id && window.innerWidth <= 768) {
+        document.querySelector(".sidebar-right")?.classList.add("show");
+    }
 }
 
 function renderPropertyPanel() {
+    const btnToggleRight = document.getElementById("toggle-right") as HTMLButtonElement;
+
     if (!selectedElementId) {
         propertyPanel.style.display = "none";
+        btnToggleRight.style.display = "none";
         return;
+    }
+
+    // Show toggle button if in responsive view
+    if (window.innerWidth <= 768) {
+        btnToggleRight.style.display = "flex";
+    } else {
+        btnToggleRight.style.display = "none";
     }
     const el = currentLayout.elements.find(e => e.id === selectedElementId);
     if (!el) return;
@@ -324,6 +339,22 @@ function startElementDrag(e: MouseEvent, el: StickerElement) {
 
 // --- Global UX Handlers ---
 function setupGlobalListeners() {
+    const leftSidebar = document.querySelector(".sidebar") as HTMLElement;
+    const rightSidebar = document.querySelector(".sidebar-right") as HTMLElement;
+    const btnToggleLeft = document.getElementById("toggle-left") as HTMLButtonElement;
+    const btnToggleRight = document.getElementById("toggle-right") as HTMLButtonElement;
+
+    btnToggleLeft.onclick = () => leftSidebar.classList.toggle("show");
+    btnToggleRight.onclick = () => rightSidebar.classList.toggle("show");
+
+    // Close sidebars on resize if window becomes large
+    window.onresize = () => {
+        if (window.innerWidth > 768) {
+            leftSidebar.classList.remove("show");
+            rightSidebar.classList.remove("show");
+        }
+        renderPropertyPanel();
+    };
     // Theme
     document.getElementById("btn-theme-toggle")!.onclick = () => {
         isDarkMode = !isDarkMode;

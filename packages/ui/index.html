@@ -15,7 +15,7 @@
   <header>
     <h1>
       <div class="logo-icon">QR</div>
-      QR Layout Designer
+      <span></span>QR Layout Designer</span>
     </h1>
     <div style="display: flex; gap: 12px; align-items: center;">
       <button id="btn-theme-toggle" class="btn btn-outline">Dark Mode</button>
@@ -97,6 +97,9 @@
 
       <!-- CENTER: CANVAS -->
       <main class="preview-area">
+        <button id="toggle-left" class="sidebar-toggle" title="Toggle Settings">☰</button>
+        <button id="toggle-right" class="sidebar-toggle" title="Toggle Properties" style="display: none;">✎</button>
+
         <div class="canvas-wrapper">
           <canvas id="preview-canvas"></canvas>
           <div id="editor-overlay" class="editor-overlay"></div>
