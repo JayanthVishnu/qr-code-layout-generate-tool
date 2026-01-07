@@ -11,6 +11,7 @@ The **React Demo** serves as a "Ready-to-Use" playground and a boilerplate for d
 ### 1. Visual Layout Designer
 - **Drag-and-Resize**: Intuitively move and scale elements (Text and QR codes) directly on a live canvas.
 - **Advanced Text Alignment**: Precise control over placement with both **Horizontal** (Left, Center, Right) and **Vertical** (Top, Middle, Bottom) alignment.
+- **Dynamic QR Separator**: Custom separators (like `|`, `;`, `:`) for joining multiple data fields into a single QR code.
 - **Live Dynamic Data Preview**: Uses localized Indian sample data (e.g., *Rajesh Sharma*) to show exactly how your stickers will look with real values.
 
 ### 2. Multi-Entity Architecture

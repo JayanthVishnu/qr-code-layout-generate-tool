@@ -143,6 +143,7 @@ pdfDoc.save("badges.pdf");
 | `x`, `y` | `number` | Position from top-left. |
 | `w`, `h` | `number` | Width and height. |
 | `content` | `string` | Text, URL, source. Supports `{{key}}` syntax. |
+| `qrSeparator` | `string` | (Optional) Separator used to join consecutive `{{variables}}` (e.g., `|`, `,`). |
 | `style.fontFamily` | `string` | Font family (e.g., 'sans-serif', 'Inter'). |
 | `style.fontSize` | `number` | Font size (px). |
 | `style.fontWeight` | `string \| number` | Font weight (e.g., 'bold', 700). |
