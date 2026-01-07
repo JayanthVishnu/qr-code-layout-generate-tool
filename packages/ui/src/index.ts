@@ -1,5 +1,9 @@
 import { StickerPrinter, StickerLayout, StickerElement, ElementType } from "qrlayout-core";
 
+export function createDesigner() {
+    init();
+}
+
 const ENTITY_SCHEMAS: Record<string, { label: string; fields: { name: string; label: string }[]; sampleData: any }> = {
     employee: {
         label: "Employee",
