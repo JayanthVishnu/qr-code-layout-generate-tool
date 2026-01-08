@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Download, Printer, FileText, Image as ImageIcon, Info } from 'lucide-react';
+import { Plus, X, Printer, FileText, Image as ImageIcon, Info } from 'lucide-react';
 import { storage, type Employee } from '../../services/storage';
 import { Table, type Column } from '../../components/Table';
 import { StickerPrinter } from 'qrlayout-core';
@@ -93,7 +93,7 @@ export function EmployeeMaster() {
         if (!layout || selected.length === 0) return;
 
         for (const emp of selected) {
-            const dataUrl = await printer.current.renderToDataURL(layout, emp, { format: 'png' });
+            const dataUrl = await printer.current.renderToDataURL(layout, emp as any, { format: 'png' });
 
             const link = document.createElement('a');
             link.download = `${emp.fullName}-badge.png`;
@@ -107,7 +107,7 @@ export function EmployeeMaster() {
         const selected = getSelectedEmployees();
         if (!layout || selected.length === 0) return;
 
-        const pdf = await exportToPDF(layout, selected);
+        const pdf = await exportToPDF(layout, selected as any[]);
         pdf.save(`batch-badges-${Date.now()}.pdf`);
     };
 
@@ -116,7 +116,7 @@ export function EmployeeMaster() {
         const selected = getSelectedEmployees();
         if (!layout || selected.length === 0) return;
 
-        const zplArray = printer.current.exportToZPL(layout, selected);
+        const zplArray = printer.current.exportToZPL(layout, selected as any[]);
         const zplContent = zplArray.join('\n');
 
         console.log('ZPL Code generated:', zplContent);
