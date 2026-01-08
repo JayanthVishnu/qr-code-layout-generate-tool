@@ -8,7 +8,7 @@ export default defineConfig({
         lib: {
             entry: path.resolve(__dirname, 'src/index.ts'),
             name: 'QRLayoutUI',
-            fileName: (format) => `qrlayout-ui.${format === 'esm' ? 'js' : 'umd.js'}`,
+            fileName: (format) => `qrlayout-ui.${format === 'es' ? 'js' : 'umd.js'}`,
             formats: ['es', 'umd']
         },
         rollupOptions: {

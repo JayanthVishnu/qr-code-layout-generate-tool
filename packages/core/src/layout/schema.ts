@@ -45,6 +45,7 @@ export interface StickerLayout {
     height: number;
     unit: Unit;
     elements: StickerElement[];
+    targetEntity?: string;
 
     // Optional background
     backgroundColor?: string;

@@ -8,119 +8,79 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/src/styles.css" />
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #f1f5f9;
+    }
+
+    #app {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
 </head>
 
 <body>
-  <header>
-    <h1>
-      <div class="logo-icon">QR</div>
-      <span></span>QR Layout Designer</span>
-    </h1>
-    <div style="display: flex; gap: 12px; align-items: center;">
-      <button id="btn-theme-toggle" class="btn btn-outline">Dark Mode</button>
-      <div style="width: 1px; height: 24px; background: var(--border-color); margin: 0 4px;"></div>
-      <button id="btn-export-json" class="btn btn-outline">Export JSON</button>
-      <button id="btn-save-all" class="btn btn-primary">Get Layout Data</button>
-    </div>
-  </header>
+  <div id="app"></div>
 
-  <div class="main-container">
-    <div class="edit-view" style="display: flex; flex: 1; height: 100%;">
-      <!-- LEFT SIDEBAR: CONFIG & ELEMENTS -->
-      <aside class="sidebar">
-        <!-- Configuration -->
-        <div class="sidebar-section">
-          <div class="sidebar-title">Layout Settings</div>
-          <div class="form-group">
-            <label>Target Entity</label>
-            <select id="layout-entity">
-              <option value="">Select Entity...</option>
-              <option value="employee">Employee</option>
-              <option value="vendor">Vendor</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Internal Layout Name</label>
-            <input type="text" id="layout-name" placeholder="Standard Badge" />
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="flex: 1">
-              <label id="label-width">Width (mm)</label>
-              <input type="number" id="layout-width" value="100" step="0.01" />
-            </div>
-            <div class="form-group" style="flex: 1">
-              <label id="label-height">Height (mm)</label>
-              <input type="number" id="layout-height" value="60" step="0.01" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Measurement Unit</label>
-            <select id="layout-unit">
-              <option value="mm">Millimeters (mm)</option>
-              <option value="cm">Centimeters (cm)</option>
-              <option value="in">Inches (in)</option>
-              <option value="px">Pixels (px)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Base Background</label>
-            <div class="color-picker-wrapper">
-              <div id="bg-preview" class="color-preview" style="background: #ffffff"></div>
-              <input type="text" id="layout-bg" value="#ffffff" />
-            </div>
-          </div>
-        </div>
+  <script type="module">
+    import { QRLayoutDesigner } from "/src/index.ts";
 
-        <!-- Elements List -->
-        <div class="sidebar-section">
-          <div class="sidebar-title">
-            Elements
-            <div style="display: flex; gap: 6px">
-              <button id="btn-add-text" class="btn btn-outline btn-sm" title="Add Text">+ Text</button>
-              <button id="btn-add-qr" class="btn btn-outline btn-sm" title="Add QR">+ QR</button>
-            </div>
-          </div>
-          <div id="elements-container" class="element-list" style="margin-top: 8px;">
-            <!-- JS Injected -->
-          </div>
-        </div>
+    // Example Entity Schemas
+    const schemas = {
+      employee: {
+        label: "Employee",
+        fields: [
+          { name: "name", label: "Full Name" },
+          { name: "employeeId", label: "Employee ID" },
+          { name: "designation", label: "Designation" },
+          { name: "place", label: "Location" }
+        ],
+        sampleData: { name: "Rajesh Sharma", employeeId: "EMP-101", designation: "Software Engineer", place: "Bengaluru" }
+      },
+      product: {
+        label: "Product",
+        fields: [
+          { name: "title", label: "Product Title" },
+          { name: "sku", label: "SKU Code" },
+          { name: "price", label: "Price" }
+        ],
+        sampleData: { title: "Wireless Mouse", sku: "WM-889", price: "$25.00" }
+      }
+    };
 
-        <!-- Component Info -->
-        <div class="sidebar-section"
-          style="padding: 12px; background: var(--panel-bg-alt); border-top: 1px solid var(--border-color);">
-          <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
-            This designer is a standalone component. Save returns the <strong>StickerLayout</strong> object.
-          </div>
-        </div>
-      </aside>
+    // Example Initial Layout
+    const initialLayout = {
+      id: "layout-demo",
+      name: "Demo Badge",
+      targetEntity: "employee",
+      width: 100, // Number, not string
+      height: 60,
+      unit: "mm",
+      backgroundColor: "#ffffff",
+      elements: [
+        { id: "t1", type: "text", x: 5, y: 5, w: 90, h: 8, content: "EMPLOYEE ID", style: { textAlign: "center", fontWeight: "bold" } },
+        { id: "q1", type: "qr", x: 35, y: 15, w: 30, h: 30, content: "{{employeeId}}" },
+        { id: "t2", type: "text", x: 5, y: 48, w: 90, h: 8, content: "{{name}}", style: { textAlign: "center" } }
+      ]
+    };
 
-      <!-- CENTER: CANVAS -->
-      <main class="preview-area">
-        <button id="toggle-left" class="sidebar-toggle" title="Toggle Settings">☰</button>
-        <button id="toggle-right" class="sidebar-toggle" title="Toggle Properties" style="display: none;">✎</button>
-
-        <div class="canvas-wrapper">
-          <canvas id="preview-canvas"></canvas>
-          <div id="editor-overlay" class="editor-overlay"></div>
-        </div>
-      </main>
-
-      <!-- RIGHT SIDEBAR: PROPERTIES -->
-      <aside class="sidebar-right" id="property-panel" style="display: none;">
-        <div class="sidebar-section">
-          <div class="sidebar-title">Element Properties</div>
-          <div id="prop-content">
-            <!-- JS Injected -->
-          </div>
-          <button id="btn-delete-element" class="btn btn-danger btn-block" style="margin-top: 24px">Delete
-            Element</button>
-        </div>
-      </aside>
-    </div>
-  </div>
-
-  <script type="module" src="/src/index.ts"></script>
+    const app = document.getElementById("app");
+    const designer = new QRLayoutDesigner({
+      element: app,
+      entitySchemas: schemas,
+      initialLayout: initialLayout,
+      onSave: (layout) => {
+        console.log("Saved Layout:", layout);
+        alert("Layout saved! Check console.");
+      }
+    });
+  </script>
 </body>
 
 </html>

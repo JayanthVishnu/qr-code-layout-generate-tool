@@ -1,5 +1,5 @@
 {
-  "name": "@shashi089/qrlayout-ui",
+  "name": "qrlayout-ui",
   "version": "1.0.0",
   "license": "MIT",
   "repository": {
@@ -9,6 +9,20 @@
   },
   "private": false,
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/qrlayout-ui.umd.js",
+  "module": "./dist/qrlayout-ui.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/qrlayout-ui.js",
+      "require": "./dist/qrlayout-ui.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./style.css": "./dist/qrlayout-ui.css"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
