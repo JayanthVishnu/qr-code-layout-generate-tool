@@ -93,19 +93,6 @@ export class QRLayoutDesigner {
     private renderTemplate() {
         this.container.classList.add("qrlayout-designer");
         this.container.innerHTML = `
-        <header>
-            <h1>
-                <div class="logo-icon">QR</div>
-                <span>QR Layout Designer</span>
-            </h1>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <button class="btn btn-outline" data-action="toggle-theme">Dark Mode</button>
-                <div style="width: 1px; height: 24px; background: var(--border-color); margin: 0 4px;"></div>
-                <button class="btn btn-outline" data-action="export-json">Export JSON</button>
-                <button class="btn btn-primary" data-action="save">Get Layout Data</button>
-            </div>
-        </header>
-
         <div class="main-container">
             <div class="edit-view" style="display: flex; flex: 1; height: 100%;">
                 <!-- LEFT SIDEBAR: CONFIG & ELEMENTS -->
