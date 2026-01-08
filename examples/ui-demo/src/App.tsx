@@ -3,9 +3,8 @@ import { QRLayoutDesigner, type EntitySchema, type StickerLayout } from 'qrlayou
 import 'qrlayout-ui/style.css';
 import './App.css';
 import { LabelList } from './components/LabelList';
-import { EmployeeList } from './components/EmployeeList';
-import { storage, type Employee } from './modules/storage';
-import { ArrowLeft, Tag, Users } from 'lucide-react';
+import { storage, } from './modules/storage';
+import { ArrowLeft, Tag,  } from 'lucide-react';
 
 // Sample Schema
 const SAMPLE_SCHEMAS: Record<string, EntitySchema> = {
@@ -62,13 +61,11 @@ function App() {
   const [mainView, setMainView] = useState<MainView>('labels');
   const [subView, setSubView] = useState<SubView>('list');
   const [labels, setLabels] = useState<StickerLayout[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingLayout, setEditingLayout] = useState<StickerLayout | null>(null);
 
   // Load data on mount
   useEffect(() => {
     setLabels(storage.getLabels());
-    setEmployees(storage.getEmployees());
   }, []);
 
   // Initialize Designer when switching to designer view
@@ -123,21 +120,7 @@ function App() {
     setEditingLayout(null);
   };
 
-  // Employee handlers
-  const handleAddEmployee = (employee: Employee) => {
-    storage.addEmployee(employee);
-    setEmployees(storage.getEmployees());
-  };
-
-  const handleEditEmployee = (employee: Employee) => {
-    storage.addEmployee(employee);
-    setEmployees(storage.getEmployees());
-  };
-
-  const handleDeleteEmployee = (id: string) => {
-    storage.deleteEmployee(id);
-    setEmployees(storage.getEmployees());
-  };
+ 
 
   const handleMainViewChange = (view: MainView) => {
     setMainView(view);
@@ -179,39 +162,21 @@ function App() {
                     <Tag size={18} />
                     <span>Labels</span>
                   </button>
-                  <button
-                    onClick={() => handleMainViewChange('employees')}
-                    className={`flex items-center gap-2 px-5 py-2.5 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'employees'
-                      ? 'bg-white text-purple-600 shadow-md'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                      }`}
-                  >
-                    <Users size={18} />
-                    <span>Employees</span>
-                  </button>
+                
                 </nav>
               </div>
             </div>
           </div>
 
           {/* Content */}
-          {mainView === 'labels' ? (
+      
             <LabelList
               labels={labels}
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
-          ) : (
-            <EmployeeList
-              employees={employees}
-              layouts={labels.filter(l => l.targetEntity === 'employee')}
-              schema={SAMPLE_SCHEMAS.employee}
-              onAdd={handleAddEmployee}
-              onEdit={handleEditEmployee}
-              onDelete={handleDeleteEmployee}
-            />
-          )}
+         
         </>
       ) : (
         <div className="relative">
