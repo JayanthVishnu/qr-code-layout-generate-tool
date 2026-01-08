@@ -1,6 +1,22 @@
 {
   "name": "qrlayout-ui",
   "version": "1.0.0",
+  "description": "Visual designer and UI components for QR layout generation",
+  "keywords": [
+    "qr",
+    "qrcode",
+    "qr-code",
+    "qr-layout",
+    "qr-layout-designer",
+    "layout",
+    "qr-sticker",
+    "qr-label",
+    "generator",
+    "visual-editor",
+    "drag-drop",
+    "ui-components"
+  ],
+  "author": "Shashidhar Naik <shashidharnaik8@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,9 +33,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/qrlayout-ui.js",
-      "require": "./dist/qrlayout-ui.umd.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/qrlayout-ui.umd.js"
     },
     "./style.css": "./dist/qrlayout-ui.css"
   },

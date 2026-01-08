@@ -1,74 +1,123 @@
-# QR Layout Workspace
+# QR Layout Tool
 
-A powerful, monorepo-based tool for designing, generating, and printing QR code layouts. This project provides both a core library for programmatic generation and a user-friendly UI for visual design.
+**A powerful, professional-grade engine for designing, rendering, and printing QR code layouts.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/qrlayout-core.svg?label=qrlayout-core)](https://www.npmjs.com/package/qrlayout-core)
+[![Typescript](https://img.shields.io/badge/TypeScript-Enabled-blue.svg)](https://www.typescriptlang.org/)
 
 **[View Live Demo](https://qr-layout-design-react-demo.netlify.app/)**
 
+---
+
+## Overview
+
+**QR Layout Tool** is a complete solution for developers building applications that need to generate dynamic, printable labels, stickers, or badges containing QR codes. Unlike simple "QR generators" that just output a single image, this tool allows you to design composed **layouts** with text, multiple QR codes, images, and dynamic data fields.
+
+It is structured as a monorepo consisting of a core rendering engine and a visual designer UI.
+
+### Why use QR Layout Tool?
+
+- **Visual Design**: Build layouts with a drag-and-drop interface (via `qrlayout-ui`).
+- **Industrial Ready**: Native **ZPL (Zebra Programming Language)** export for thermal label printers.
+- **Print Perfect**: High-quality **PDF** and **PNG** export for standard office printers.
+- **Dynamic Data**: Built-in "Mail Merge" functionality. Design once with placeholders like `{{name}}` or `{{sku}}` and batch generate thousands of unique labels.
+- **Edge Utility**: Runs entirely in the browser or Node.js. No heavy server processing required.
+
 ## Packages
 
-This repository is organized as a monorepo containing:
+| Package | Description | Version | Links |
+| :--- | :--- | :--- | :--- |
+| **[@qrlayout/core](./packages/core)** | The headless rendering engine. Handles Layout JSON parsing, data merging, and rendering to Canvas, ZPL, or PDF. Use this if you just need to generate files. | [![npm](https://img.shields.io/npm/v/qrlayout-core.svg)](https://www.npmjs.com/package/qrlayout-core) | [Docs](./packages/core/README.md) |
+| **[@qrlayout/ui](./packages/ui)** | An embeddable Layout Designer. Provides a polished `QRLayoutDesigner` class and React components to let *your* users design their own labels inside your app. | *Local* | [Docs](./packages/ui/README.md) |
 
-- **[`qrlayout-core`](./packages/core)**: The core rendering engine capable of generating layouts in PNG, PDF, and ZPL formats. It can be used as a standalone library in your own projects.
-- **`packages/ui`**: The source code for the web-based visual editor. This is a local application for designing layouts, not currently published to npm.
+## Use Cases
 
-## Getting Started
+- **Event Management**: Generate conference badges with unique attendee QR codes and names.
+- **Inventory Systems**: Print sticky labels for products with SKU, Description, and Scannable Barcodes/QRs.
+- **Visitor Management**: Create temporary visitor passes on the fly.
+- **Logistics**: Generate industry-standard ZPL code for shipping labels to be sent directly to Zebra printers.
 
-Follow these instructions to set up the project locally for development or usage.
+## Installation & Usage
 
-### Prerequisites
+### 1. Using the Core Engine (Server or Client)
 
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [npm](https://www.npmjs.com/) (v8+ with workspaces support)
+If you only need to *generate* layouts:
 
-### Installation
+```bash
+npm install qrlayout-core
+```
 
-Clone the repository and install dependencies:
+```javascript
+import { StickerPrinter } from "qrlayout-core";
 
+const layout = { ... }; // Your Layout JSON
+const data = { name: "MacBook Pro", sku: "MBP-M3-14" };
+
+const printer = new StickerPrinter();
+const zpl = printer.exportToZPL(layout, [data]); 
+// Output: ^XA^FO... (Ready for printer)
+```
+
+### 2. Using the Visual Designer (Frontend)
+
+If you want to embed the designer in your React/Vue/Angular app:
+
+```bash
+npm install qrlayout-ui qrlayout-core
+```
+
+```javascript
+import { QRLayoutDesigner } from "qrlayout-ui";
+import "qrlayout-ui/style.css";
+
+const designer = new QRLayoutDesigner({
+    element: document.getElementById("editor"),
+    initialLayout: myLayout,
+    onSave: (layout) => saveToDb(layout)
+});
+```
+
+## Development
+
+This repository uses **npm workspaces**.
+
+### 1. Setup
 ```bash
 git clone https://github.com/shashi089/qr-code-layout-generate-tool.git
 cd qr-code-layout-generate-tool
 npm install
 ```
 
-### Running the Application
-
-To start the visual editor (UI) locally:
-
+### 2. Run the UI Demo
+To start the local development server for the UI package and the demo app:
 ```bash
 npm run dev:ui
 ```
+This typically starts on `http://localhost:5173`.
 
-This will start the development server. Open the URL shown in your terminal (usually `http://localhost:5173`) to access the editor.
-
-### Building
-
-To build the packages for production:
-
-**Build Core Library:**
+### 3. Build Libraries
 ```bash
+# Build Core
 npm run build:core
-```
 
-**Build UI Application:**
-```bash
+# Build UI
 npm run build:ui
 ```
 
-**Build All:**
-```bash
-npm run build
-```
+## detailed Documentation
+- [Core Documentation & API Reference](./packages/core/README.md)
+- [UI Documentation & Integration Guide](./packages/ui/README.md)
 
 ## Contributing
 
-Contributions are welcome! If you'd like to improve the core engine or the UI, please feel free to fork the repository and submit a Pull Request.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please fork the repository and open a pull request.
+1. Fork it
+2. Create your feature branch (`git checkout -b feature/cool-feature`)
+3. Commit your changes (`git commit -am 'Add some cool feature'`)
+4. Push to the branch (`git push origin feature/cool-feature`)
+5. Create a new Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT © [Shashidhar Naik](https://github.com/shashi089)
