@@ -52,7 +52,7 @@ npm install qrlayout-core
 import { StickerPrinter } from "qrlayout-core";
 
 const layout = { ... }; // Your Layout JSON
-const data = { name: "MacBook Pro", sku: "MBP-M3-14" };
+const data = { name: "Office Laptop", sku: "OL-M3-14" };
 
 const printer = new StickerPrinter();
 const zpl = printer.exportToZPL(layout, [data]); 
