@@ -6,7 +6,8 @@
 [![npm version](https://img.shields.io/npm/v/qrlayout-core.svg?label=qrlayout-core)](https://www.npmjs.com/package/qrlayout-core)
 [![Typescript](https://img.shields.io/badge/TypeScript-Enabled-blue.svg)](https://www.typescriptlang.org/)
 
-**[View Live Demo](https://qr-layout-design-react-demo.netlify.app/)**
+**[View Live Demo UI & Core ](https://qr-layout-designer.netlify.app/)** (Showcasing both `qrlayout-core` & `qrlayout-ui`)
+**[View Live Demo Core](https://qr-layout-design-react-demo.netlify.app/)**
 
 ---
 
@@ -29,7 +30,7 @@ It is structured as a monorepo consisting of a core rendering engine and a visua
 | Package | Description | Version | Links |
 | :--- | :--- | :--- | :--- |
 | **[@qrlayout/core](./packages/core)** | The headless rendering engine. Handles Layout JSON parsing, data merging, and rendering to Canvas, ZPL, or PDF. Use this if you just need to generate files. | [![npm](https://img.shields.io/npm/v/qrlayout-core.svg)](https://www.npmjs.com/package/qrlayout-core) | [Docs](./packages/core/README.md) |
-| **[@qrlayout/ui](./packages/ui)** | An embeddable Layout Designer. Provides a polished `QRLayoutDesigner` class and React components to let *your* users design their own labels inside your app. | *Local* | [Docs](./packages/ui/README.md) |
+| **[@qrlayout/ui](./packages/ui)** | An embeddable Layout Designer. Provides a polished `QRLayoutDesigner` class and React components to let *your* users design their own labels inside your app. | [![npm](https://img.shields.io/npm/v/qrlayout-ui.svg)](https://www.npmjs.com/package/qrlayout-ui) | [Docs](./packages/ui/README.md) |
 
 ## Use Cases
 
