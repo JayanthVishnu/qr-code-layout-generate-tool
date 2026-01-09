@@ -5,8 +5,11 @@ import 'qrlayout-ui/style.css';
 import './App.css';
 import { LabelList } from './features/labels/LabelList';
 import { storage } from './services/storage';
-import { ArrowLeft, Tag, Users } from 'lucide-react';
+import { ArrowLeft, Tag, Users, Cpu, Home, Package } from 'lucide-react';
 import { EmployeeMaster } from './features/employees/EmployeeMaster';
+import { MachineMaster } from './features/machines/MachineMaster';
+import { BinMaster } from './features/storage/BinMaster';
+import { LandingPage } from './features/home/LandingPage';
 
 // ... (Existing SAMPLE_SCHEMAS and DEFAULT_NEW_LAYOUT remain unchanged)
 
@@ -26,6 +29,36 @@ const SAMPLE_SCHEMAS: Record<string, EntitySchema> = {
       department: "Engineering",
       joinDate: "2024-01-15"
     }
+  },
+  machine: {
+    label: "Machine Master",
+    fields: [
+      { name: "machineName", label: "Machine Name" },
+      { name: "machineCode", label: "Machine Code" },
+      { name: "location", label: "Location" },
+      { name: "model", label: "Model" },
+    ],
+    sampleData: {
+      machineName: "CNC Milling Machine",
+      machineCode: "MC-2024-V1",
+      location: "Shop Floor A",
+      model: "XYZ-2000"
+    }
+  },
+  storage: {
+    label: "Storage Master",
+    fields: [
+      { name: "binCode", label: "BIN Code" },
+      { name: "storageType", label: "Storage Type" },
+      { name: "aisle", label: "Aisle" },
+      { name: "rack", label: "Rack Number" },
+    ],
+    sampleData: {
+      binCode: "BIN-A1-R4",
+      storageType: "Pallet Rack",
+      aisle: "Aisle 01",
+      rack: "R-44"
+    }
   }
 };
 
@@ -40,20 +73,21 @@ const DEFAULT_NEW_LAYOUT: Omit<StickerLayout, 'id'> = {
   elements: []
 };
 
-type MainView = 'labels' | 'employees';
+type MainView = 'home' | 'labels' | 'employees' | 'machines' | 'storage';
 type SubView = 'list' | 'designer';
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const designerRef = useRef<QRLayoutDesigner | null>(null);
 
-  const [mainView, setMainView] = useState<MainView>('labels');
+  const [mainView, setMainView] = useState<MainView>('home');
   const [subView, setSubView] = useState<SubView>('list');
   const [labels, setLabels] = useState<StickerLayout[]>([]);
   const [editingLayout, setEditingLayout] = useState<StickerLayout | null>(null);
 
   // Load data on mount
   useEffect(() => {
+    storage.initializeDefaults();
     setLabels(storage.getLabels());
   }, []);
 
@@ -157,9 +191,19 @@ function App() {
                 {/* Navigation Tabs */}
                 <nav className="flex gap-2 bg-gray-100 p-1.5 rounded-xl">
                   <button
+                    onClick={() => handleMainViewChange('home')}
+                    className={`flex items-center gap-2 px-4 py-2 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'home'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                  >
+                    <Home size={18} />
+                    <span className="hidden md:inline">Home</span>
+                  </button>
+                  <button
                     onClick={() => handleMainViewChange('labels')}
-                    className={`flex items-center gap-2 px-5 py-2.5 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'labels'
-                      ? 'bg-white text-blue-600 shadow-md'
+                    className={`flex items-center gap-2 px-4 py-2 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'labels'
+                      ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                       }`}
                   >
@@ -175,6 +219,26 @@ function App() {
                   >
                     <Users size={18} />
                     <span>Employees</span>
+                  </button>
+                  <button
+                    onClick={() => handleMainViewChange('machines')}
+                    className={`flex items-center gap-2 px-4 py-2 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'machines'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                  >
+                    <Cpu size={18} />
+                    <span className="hidden md:inline">Machines</span>
+                  </button>
+                  <button
+                    onClick={() => handleMainViewChange('storage')}
+                    className={`flex items-center gap-2 px-4 py-2 font-semibold transition-all duration-200 rounded-lg cursor-pointer ${mainView === 'storage'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                  >
+                    <Package size={18} />
+                    <span className="hidden md:inline">Storage</span>
                   </button>
                 </nav>
 
@@ -199,15 +263,21 @@ function App() {
           </div>
 
           {/* Content Based on Tab */}
-          {mainView === 'labels' ? (
+          {mainView === 'home' ? (
+            <LandingPage onNavigate={handleMainViewChange} />
+          ) : mainView === 'labels' ? (
             <LabelList
               labels={labels}
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
-          ) : (
+          ) : mainView === 'employees' ? (
             <EmployeeMaster />
+          ) : mainView === 'machines' ? (
+            <MachineMaster />
+          ) : (
+            <BinMaster />
           )}
         </>
       )}

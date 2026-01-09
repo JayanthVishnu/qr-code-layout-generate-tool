@@ -1,47 +1,47 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, X, Printer, FileText, Image as ImageIcon, Info } from 'lucide-react';
-import { storage, type Employee } from '../../services/storage';
+import { storage, type Bin } from '../../services/storage';
 import { Table, type Column } from '../../components/Table';
 import { StickerPrinter } from 'qrlayout-core';
 import { exportToPDF } from 'qrlayout-core/pdf';
 import type { StickerLayout } from 'qrlayout-ui';
 
-export function EmployeeMaster() {
-    const [employees, setEmployees] = useState<Employee[]>([]);
+export function BinMaster() {
+    const [bins, setBins] = useState<Bin[]>([]);
     const [labels, setLabels] = useState<StickerLayout[]>([]);
     const [selectedLayoutId, setSelectedLayoutId] = useState<string>('');
 
     // Selection State
-    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [selectedBinIds, setSelectedBinIds] = useState<string[]>([]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [editingBin, setEditingBin] = useState<Bin | null>(null);
     const printer = useRef(new StickerPrinter());
 
     // Form State
-    const [formData, setFormData] = useState<Partial<Employee>>({});
+    const [formData, setFormData] = useState<Partial<Bin>>({});
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = () => {
-        setEmployees(storage.getEmployees());
+        setBins(storage.getBins());
         const loadedLabels = storage.getLabels();
-        // Filter labels for 'employee' entity
-        const employeeLabels = loadedLabels.filter(l => l.targetEntity === 'employee');
-        setLabels(employeeLabels);
-        if (employeeLabels.length > 0 && !selectedLayoutId) {
-            setSelectedLayoutId(employeeLabels[0].id);
+        // Filter labels for 'bin' entity
+        const binLabels = loadedLabels.filter(l => l.targetEntity === 'storage');
+        setLabels(binLabels);
+        if (binLabels.length > 0 && !selectedLayoutId) {
+            setSelectedLayoutId(binLabels[0].id);
         }
     };
 
-    const handleOpenModal = (employee?: Employee) => {
-        if (employee) {
-            setEditingEmployee(employee);
-            setFormData(employee);
+    const handleOpenModal = (bin?: Bin) => {
+        if (bin) {
+            setEditingBin(bin);
+            setFormData(bin);
         } else {
-            setEditingEmployee(null);
+            setEditingBin(null);
             setFormData({});
         }
         setIsModalOpen(true);
@@ -49,40 +49,40 @@ export function EmployeeMaster() {
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setEditingEmployee(null);
+        setEditingBin(null);
         setFormData({});
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.fullName || !formData.employeeId) return;
+        if (!formData.binCode || !formData.aisle) return;
 
-        const employee: Employee = {
-            id: editingEmployee?.id || crypto.randomUUID(),
-            fullName: formData.fullName,
-            employeeId: formData.employeeId,
-            department: formData.department || '',
-            joinDate: formData.joinDate || new Date().toISOString().split('T')[0]
+        const bin: Bin = {
+            id: editingBin?.id || crypto.randomUUID(),
+            binCode: formData.binCode,
+            storageType: formData.storageType || '',
+            aisle: formData.aisle,
+            rack: formData.rack || ''
         };
 
-        storage.addEmployee(employee);
+        storage.addBin(bin);
         loadData();
         handleCloseModal();
     };
 
-    const handleDelete = (employee: Employee) => {
-        if (window.confirm(`Are you sure you want to delete ${employee.fullName}?`)) {
-            storage.deleteEmployee(employee.id);
+    const handleDelete = (bin: Bin) => {
+        if (window.confirm(`Are you sure you want to delete Bin ${bin.binCode}?`)) {
+            storage.deleteBin(bin.id);
             loadData();
             // Remove from selection if deleted
-            setSelectedEmployeeIds(prev => prev.filter(id => id !== employee.id));
+            setSelectedBinIds(prev => prev.filter(id => id !== bin.id));
         }
     };
 
     // --- Export Logic ---
 
-    const getSelectedEmployees = () => {
-        return employees.filter(e => selectedEmployeeIds.includes(e.id));
+    const getSelectedBins = () => {
+        return bins.filter(b => selectedBinIds.includes(b.id));
     };
 
     const getActiveLayout = () => {
@@ -91,14 +91,14 @@ export function EmployeeMaster() {
 
     const handleExportPNG = async () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedBins();
         if (!layout || selected.length === 0) return;
 
-        for (const emp of selected) {
-            const dataUrl = await printer.current.renderToDataURL(layout, emp as any, { format: 'png' });
+        for (const item of selected) {
+            const dataUrl = await printer.current.renderToDataURL(layout, item as any, { format: 'png' });
 
             const link = document.createElement('a');
-            link.download = `${emp.fullName}-badge.png`;
+            link.download = `bin-${item.binCode}.png`;
             link.href = dataUrl;
             link.click();
         }
@@ -106,16 +106,16 @@ export function EmployeeMaster() {
 
     const handleExportPDF = async () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedBins();
         if (!layout || selected.length === 0) return;
 
         const pdf = await exportToPDF(layout, selected as any[]);
-        pdf.save(`batch-badges-${Date.now()}.pdf`);
+        pdf.save(`batch-bin-labels-${Date.now()}.pdf`);
     };
 
     const handleExportZPL = () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedBins();
         if (!layout || selected.length === 0) return;
 
         const zplArray = printer.current.exportToZPL(layout, selected as any[]);
@@ -128,18 +128,18 @@ export function EmployeeMaster() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `batch-badges.zpl`;
+        link.download = `batch-bin-labels.zpl`;
         link.click();
     };
 
-    const columns: Column<Employee>[] = [
-        { header: 'Employee ID', accessorKey: 'employeeId' },
-        { header: 'Full Name', accessorKey: 'fullName' },
-        { header: 'Department', accessorKey: 'department' },
-        { header: 'Join Date', accessorKey: 'joinDate' },
+    const columns: Column<Bin>[] = [
+        { header: 'BIN Code', accessorKey: 'binCode' },
+        { header: 'Storage Type', accessorKey: 'storageType' },
+        { header: 'Aisle', accessorKey: 'aisle' },
+        { header: 'Rack', accessorKey: 'rack' },
     ];
 
-    const hasSelection = selectedEmployeeIds.length > 0;
+    const hasSelection = selectedBinIds.length > 0;
     const hasLayout = !!selectedLayoutId;
 
     return (
@@ -147,8 +147,8 @@ export function EmployeeMaster() {
             {/* Top Bar: Title & Configuration */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Employee Master</h2>
-                    <p className="text-gray-500">Manage records and print badges</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Storage Master (BINs)</h2>
+                    <p className="text-gray-500">Manage warehouse locations and print storage labels</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -174,21 +174,21 @@ export function EmployeeMaster() {
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
                     >
                         <Plus size={18} />
-                        <span className="hidden sm:inline">Add Employee</span>
+                        <span className="hidden sm:inline">Add BIN</span>
                     </button>
                 </div>
             </div>
 
-            {/* Info Guide - Only show when no selection is made to guide the user */}
+            {/* Info Guide */}
             {!hasSelection && (
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3 animate-in fade-in">
                     <Info className="text-blue-600 shrink-0 mt-0.5" size={20} />
                     <div className="text-sm text-blue-900">
-                        <p className="font-semibold">Batch Export Instructions:</p>
+                        <p className="font-semibold">Warehouse Labeling Instructions:</p>
                         <ol className="list-decimal ml-4 mt-1 space-y-0.5 text-blue-800">
-                            <li>Select a <strong>Layout Template</strong> from the dropdown above.</li>
-                            <li>Check the box next to one or more employees in the table.</li>
-                            <li>Click the appearing <strong>Export</strong> buttons (PNG, PDF, or ZPL) to generate badges.</li>
+                            <li>Select a <strong>Storage BIN Label</strong> layout from the dropdown.</li>
+                            <li>Select the target bins from the table below.</li>
+                            <li>Download PNG or PDF for standard labels, or ZPL for thermal industrial printers.</li>
                         </ol>
                     </div>
                 </div>
@@ -198,8 +198,8 @@ export function EmployeeMaster() {
             {hasSelection && (
                 <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-2 text-indigo-900">
-                        <span className="font-semibold bg-indigo-100 px-2 py-0.5 rounded text-sm">{selectedEmployeeIds.length}</span>
-                        <span className="font-medium">Selected</span>
+                        <span className="font-semibold bg-indigo-100 px-2 py-0.5 rounded text-sm">{selectedBinIds.length}</span>
+                        <span className="font-medium">Selected Bins</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -207,7 +207,7 @@ export function EmployeeMaster() {
                             onClick={handleExportPNG}
                             disabled={!hasLayout}
                             className="flex items-center gap-2 bg-white text-gray-700 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                            title="Download as PNG Images"
+                            title="Download as PNG"
                         >
                             <ImageIcon size={16} />
                             PNG
@@ -235,23 +235,22 @@ export function EmployeeMaster() {
             )}
 
             <Table
-                data={employees}
+                data={bins}
                 columns={columns}
                 keyField="id"
                 onEdit={handleOpenModal}
                 onDelete={handleDelete}
-                selectedIds={selectedEmployeeIds}
-                onSelectionChange={setSelectedEmployeeIds}
+                selectedIds={selectedBinIds}
+                onSelectionChange={setSelectedBinIds}
             />
 
             {/* Modal Overlay */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-                        {/* Modal Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+                                {editingBin ? 'Edit BIN' : 'Add New BIN'}
                             </h3>
                             <button
                                 onClick={handleCloseModal}
@@ -261,54 +260,53 @@ export function EmployeeMaster() {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
                         <form onSubmit={handleSave} className="p-6 space-y-4">
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                <label className="block text-sm font-medium text-gray-700">BIN Code</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.fullName || ''}
-                                    onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                    placeholder="e.g. Kashinath Hosapeti"
+                                    value={formData.binCode || ''}
+                                    onChange={e => setFormData({ ...formData, binCode: e.target.value })}
+                                    placeholder="e.g. BIN-A1-R42"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Employee ID</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.employeeId || ''}
-                                    onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
-                                    placeholder="e.g. EMP-001"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Department</label>
+                                <label className="block text-sm font-medium text-gray-700">Storage Type</label>
                                 <input
                                     type="text"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.department || ''}
-                                    onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                    placeholder="e.g. Engineering"
+                                    value={formData.storageType || ''}
+                                    onChange={e => setFormData({ ...formData, storageType: e.target.value })}
+                                    placeholder="e.g. Pallet Rack"
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Join Date</label>
-                                <input
-                                    type="date"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.joinDate || ''}
-                                    onChange={e => setFormData({ ...formData, joinDate: e.target.value })}
-                                />
+                            <div className="flex gap-4">
+                                <div className="flex-1 space-y-1.5">
+                                    <label className="block text-sm font-medium text-gray-700">Aisle</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        value={formData.aisle || ''}
+                                        onChange={e => setFormData({ ...formData, aisle: e.target.value })}
+                                        placeholder="e.g. Aisle 01"
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-1.5">
+                                    <label className="block text-sm font-medium text-gray-700">Rack</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        value={formData.rack || ''}
+                                        onChange={e => setFormData({ ...formData, rack: e.target.value })}
+                                        placeholder="e.g. R-4"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Modal Footer */}
                             <div className="flex gap-3 pt-4 mt-2">
                                 <button
                                     type="button"

@@ -1,47 +1,47 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, X, Printer, FileText, Image as ImageIcon, Info } from 'lucide-react';
-import { storage, type Employee } from '../../services/storage';
+import { storage, type Machine } from '../../services/storage';
 import { Table, type Column } from '../../components/Table';
 import { StickerPrinter } from 'qrlayout-core';
 import { exportToPDF } from 'qrlayout-core/pdf';
 import type { StickerLayout } from 'qrlayout-ui';
 
-export function EmployeeMaster() {
-    const [employees, setEmployees] = useState<Employee[]>([]);
+export function MachineMaster() {
+    const [machines, setMachines] = useState<Machine[]>([]);
     const [labels, setLabels] = useState<StickerLayout[]>([]);
     const [selectedLayoutId, setSelectedLayoutId] = useState<string>('');
 
     // Selection State
-    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
     const printer = useRef(new StickerPrinter());
 
     // Form State
-    const [formData, setFormData] = useState<Partial<Employee>>({});
+    const [formData, setFormData] = useState<Partial<Machine>>({});
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = () => {
-        setEmployees(storage.getEmployees());
+        setMachines(storage.getMachines());
         const loadedLabels = storage.getLabels();
-        // Filter labels for 'employee' entity
-        const employeeLabels = loadedLabels.filter(l => l.targetEntity === 'employee');
-        setLabels(employeeLabels);
-        if (employeeLabels.length > 0 && !selectedLayoutId) {
-            setSelectedLayoutId(employeeLabels[0].id);
+        // Filter labels for 'machine' entity
+        const machineLabels = loadedLabels.filter(l => l.targetEntity === 'machine');
+        setLabels(machineLabels);
+        if (machineLabels.length > 0 && !selectedLayoutId) {
+            setSelectedLayoutId(machineLabels[0].id);
         }
     };
 
-    const handleOpenModal = (employee?: Employee) => {
-        if (employee) {
-            setEditingEmployee(employee);
-            setFormData(employee);
+    const handleOpenModal = (machine?: Machine) => {
+        if (machine) {
+            setEditingMachine(machine);
+            setFormData(machine);
         } else {
-            setEditingEmployee(null);
+            setEditingMachine(null);
             setFormData({});
         }
         setIsModalOpen(true);
@@ -49,40 +49,40 @@ export function EmployeeMaster() {
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setEditingEmployee(null);
+        setEditingMachine(null);
         setFormData({});
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.fullName || !formData.employeeId) return;
+        if (!formData.machineName || !formData.machineCode) return;
 
-        const employee: Employee = {
-            id: editingEmployee?.id || crypto.randomUUID(),
-            fullName: formData.fullName,
-            employeeId: formData.employeeId,
-            department: formData.department || '',
-            joinDate: formData.joinDate || new Date().toISOString().split('T')[0]
+        const machine: Machine = {
+            id: editingMachine?.id || crypto.randomUUID(),
+            machineName: formData.machineName,
+            machineCode: formData.machineCode,
+            location: formData.location || '',
+            model: formData.model || ''
         };
 
-        storage.addEmployee(employee);
+        storage.addMachine(machine);
         loadData();
         handleCloseModal();
     };
 
-    const handleDelete = (employee: Employee) => {
-        if (window.confirm(`Are you sure you want to delete ${employee.fullName}?`)) {
-            storage.deleteEmployee(employee.id);
+    const handleDelete = (machine: Machine) => {
+        if (window.confirm(`Are you sure you want to delete ${machine.machineName}?`)) {
+            storage.deleteMachine(machine.id);
             loadData();
             // Remove from selection if deleted
-            setSelectedEmployeeIds(prev => prev.filter(id => id !== employee.id));
+            setSelectedMachineIds(prev => prev.filter(id => id !== machine.id));
         }
     };
 
     // --- Export Logic ---
 
-    const getSelectedEmployees = () => {
-        return employees.filter(e => selectedEmployeeIds.includes(e.id));
+    const getSelectedMachines = () => {
+        return machines.filter(m => selectedMachineIds.includes(m.id));
     };
 
     const getActiveLayout = () => {
@@ -91,14 +91,14 @@ export function EmployeeMaster() {
 
     const handleExportPNG = async () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedMachines();
         if (!layout || selected.length === 0) return;
 
-        for (const emp of selected) {
-            const dataUrl = await printer.current.renderToDataURL(layout, emp as any, { format: 'png' });
+        for (const machine of selected) {
+            const dataUrl = await printer.current.renderToDataURL(layout, machine as any, { format: 'png' });
 
             const link = document.createElement('a');
-            link.download = `${emp.fullName}-badge.png`;
+            link.download = `${machine.machineName}-label.png`;
             link.href = dataUrl;
             link.click();
         }
@@ -106,16 +106,16 @@ export function EmployeeMaster() {
 
     const handleExportPDF = async () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedMachines();
         if (!layout || selected.length === 0) return;
 
         const pdf = await exportToPDF(layout, selected as any[]);
-        pdf.save(`batch-badges-${Date.now()}.pdf`);
+        pdf.save(`batch-machine-labels-${Date.now()}.pdf`);
     };
 
     const handleExportZPL = () => {
         const layout = getActiveLayout();
-        const selected = getSelectedEmployees();
+        const selected = getSelectedMachines();
         if (!layout || selected.length === 0) return;
 
         const zplArray = printer.current.exportToZPL(layout, selected as any[]);
@@ -128,18 +128,18 @@ export function EmployeeMaster() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `batch-badges.zpl`;
+        link.download = `batch-machine-labels.zpl`;
         link.click();
     };
 
-    const columns: Column<Employee>[] = [
-        { header: 'Employee ID', accessorKey: 'employeeId' },
-        { header: 'Full Name', accessorKey: 'fullName' },
-        { header: 'Department', accessorKey: 'department' },
-        { header: 'Join Date', accessorKey: 'joinDate' },
+    const columns: Column<Machine>[] = [
+        { header: 'Machine Code', accessorKey: 'machineCode' },
+        { header: 'Machine Name', accessorKey: 'machineName' },
+        { header: 'Location', accessorKey: 'location' },
+        { header: 'Model', accessorKey: 'model' },
     ];
 
-    const hasSelection = selectedEmployeeIds.length > 0;
+    const hasSelection = selectedMachineIds.length > 0;
     const hasLayout = !!selectedLayoutId;
 
     return (
@@ -147,8 +147,8 @@ export function EmployeeMaster() {
             {/* Top Bar: Title & Configuration */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Employee Master</h2>
-                    <p className="text-gray-500">Manage records and print badges</p>
+                    <h2 className="text-2xl font-bold text-gray-900">Machine Master</h2>
+                    <p className="text-gray-500">Manage equipment and print asset labels</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ export function EmployeeMaster() {
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
                     >
                         <Plus size={18} />
-                        <span className="hidden sm:inline">Add Employee</span>
+                        <span className="hidden sm:inline">Add Machine</span>
                     </button>
                 </div>
             </div>
@@ -187,8 +187,8 @@ export function EmployeeMaster() {
                         <p className="font-semibold">Batch Export Instructions:</p>
                         <ol className="list-decimal ml-4 mt-1 space-y-0.5 text-blue-800">
                             <li>Select a <strong>Layout Template</strong> from the dropdown above.</li>
-                            <li>Check the box next to one or more employees in the table.</li>
-                            <li>Click the appearing <strong>Export</strong> buttons (PNG, PDF, or ZPL) to generate badges.</li>
+                            <li>Check the box next to one or more machines in the table.</li>
+                            <li>Click the appearing <strong>Export</strong> buttons (PNG, PDF, or ZPL) to generate labels.</li>
                         </ol>
                     </div>
                 </div>
@@ -198,7 +198,7 @@ export function EmployeeMaster() {
             {hasSelection && (
                 <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-2 text-indigo-900">
-                        <span className="font-semibold bg-indigo-100 px-2 py-0.5 rounded text-sm">{selectedEmployeeIds.length}</span>
+                        <span className="font-semibold bg-indigo-100 px-2 py-0.5 rounded text-sm">{selectedMachineIds.length}</span>
                         <span className="font-medium">Selected</span>
                     </div>
 
@@ -235,13 +235,13 @@ export function EmployeeMaster() {
             )}
 
             <Table
-                data={employees}
+                data={machines}
                 columns={columns}
                 keyField="id"
                 onEdit={handleOpenModal}
                 onDelete={handleDelete}
-                selectedIds={selectedEmployeeIds}
-                onSelectionChange={setSelectedEmployeeIds}
+                selectedIds={selectedMachineIds}
+                onSelectionChange={setSelectedMachineIds}
             />
 
             {/* Modal Overlay */}
@@ -251,7 +251,7 @@ export function EmployeeMaster() {
                         {/* Modal Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+                                {editingMachine ? 'Edit Machine' : 'Add New Machine'}
                             </h3>
                             <button
                                 onClick={handleCloseModal}
@@ -264,47 +264,48 @@ export function EmployeeMaster() {
                         {/* Modal Body */}
                         <form onSubmit={handleSave} className="p-6 space-y-4">
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                <label className="block text-sm font-medium text-gray-700">Machine Name</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.fullName || ''}
-                                    onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                    placeholder="e.g. Kashinath Hosapeti"
+                                    value={formData.machineName || ''}
+                                    onChange={e => setFormData({ ...formData, machineName: e.target.value })}
+                                    placeholder="e.g. CNC Milling Machine"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Employee ID</label>
+                                <label className="block text-sm font-medium text-gray-700">Machine Code</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.employeeId || ''}
-                                    onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
-                                    placeholder="e.g. EMP-001"
+                                    value={formData.machineCode || ''}
+                                    onChange={e => setFormData({ ...formData, machineCode: e.target.value })}
+                                    placeholder="e.g. MC-101"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Department</label>
+                                <label className="block text-sm font-medium text-gray-700">Location</label>
                                 <input
                                     type="text"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.department || ''}
-                                    onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                    placeholder="e.g. Engineering"
+                                    value={formData.location || ''}
+                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    placeholder="e.g. Shop Floor A"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Join Date</label>
+                                <label className="block text-sm font-medium text-gray-700">Model</label>
                                 <input
-                                    type="date"
+                                    type="text"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    value={formData.joinDate || ''}
-                                    onChange={e => setFormData({ ...formData, joinDate: e.target.value })}
+                                    value={formData.model || ''}
+                                    onChange={e => setFormData({ ...formData, model: e.target.value })}
+                                    placeholder="e.g. XYZ-2000"
                                 />
                             </div>
 
