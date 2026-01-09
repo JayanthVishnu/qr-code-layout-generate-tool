@@ -3,8 +3,10 @@
 A powerful, framework-agnostic QR code layout engine for designing and printing QR code stickers and labels. Create pixel-perfect layouts with text and QR codes, and export them to **PNG**, **PDF**, or **ZPL** (Zebra Programming Language).
 
 > [!NOTE]
-> This package is the core rendering engine. For a visual drag-and-drop designer and a live React example using both `qrlayout-core` and `qrlayout-ui`, visit our **[Live Demo](https://qr-layout-designer.netlify.app/)**.
->  **[Live Demo 2](https://qr-layout-design-react-demo.netlify.app/)**.
+> This package is the core rendering engine. For a visual drag-and-drop designer, check out **[qrlayout-ui](../ui/README.md)**.
+> It is a **Framework-Agnostic** embeddable UI component that works with **React, Vue, Angular, Svelte, and Vanilla JS**.
+>
+> Visit our **[Live Demo](https://qr-layout-designer.netlify.app/)** to see it in action.
 
 
 ## Features

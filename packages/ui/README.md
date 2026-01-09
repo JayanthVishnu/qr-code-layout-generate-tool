@@ -4,6 +4,8 @@ A framework-agnostic, embeddable UI for designing sticker layouts with QR codes.
 
 [**🚀 Live Demo**](https://qr-layout-designer.netlify.app/)
 
+![QR Layout Designer Screenshot](https://github.com/shashi089/qr-code-layout-generate-tool/raw/main/assets/layout_designer.png)
+
 ## Features
 
 - **Framework Independent**: Built with vanilla TypeScript, works with React, Vue, Angular, Svelte, or plain HTML/JS.

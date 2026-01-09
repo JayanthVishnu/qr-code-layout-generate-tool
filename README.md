@@ -10,6 +10,8 @@
 
 **[View Live Demo 2](https://qr-layout-design-react-demo.netlify.app/)**
 
+![QR Layout Designer Screenshot](./assets/layout_designer.png)
+
 ---
 
 ## Overview
