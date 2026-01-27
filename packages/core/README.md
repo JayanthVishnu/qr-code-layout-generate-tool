@@ -6,7 +6,8 @@ A powerful, framework-agnostic QR code layout engine for designing and printing 
 > This package is the core rendering engine. For a visual drag-and-drop designer, check out **[qrlayout-ui](../ui/README.md)**.
 > It is a **Framework-Agnostic** embeddable UI component that works with **React, Vue, Angular, Svelte, and Vanilla JS**.
 >
-> Visit our **[Live Demo](https://qr-layout-designer.netlify.app/)** to see it in action.
+- **[ React Live Demo](https://qr-layout-designer.netlify.app/)**
+- **[ Svelte Live Demo](https://qr-layout-designer-svelte.netlify.app/)**
 
 
 ## Features
@@ -23,7 +24,9 @@ QR code, qrcode, qr-code, layout, sticker, label, generator, renderer, PDF, ZPL,
 ## Live Demo & Examples
 
 - **[Interactive Demo](https://qr-layout-designer.netlify.app/)**: A full-featured designer built with `qrlayout-core` and `qrlayout-ui`.
-- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/ui-react)**: Reference implementation for monorepo usage.
+- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/ui-demo)**: Reference implementation for monorepo usage.
+
+- **[Svelte Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/svelte-demo)**: Reference implementation for Svelte 5 + Tailwind CSS.
 
 ## Installation
 

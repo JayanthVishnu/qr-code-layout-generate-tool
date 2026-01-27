@@ -7,9 +7,11 @@
 [![npm version](https://img.shields.io/npm/v/qrlayout-ui.svg?label=qrlayout-ui)](https://www.npmjs.com/package/qrlayout-ui)
 [![Typescript](https://img.shields.io/badge/TypeScript-Enabled-blue.svg)](https://www.typescriptlang.org/)
 
-**[View Live Demo 1 ](https://qr-layout-designer.netlify.app/)** (Showcasing both `qrlayout-core` & `qrlayout-ui`)
+**[View Live Demo 1](https://qr-layout-designer.netlify.app/)** (Showcasing both `qrlayout-core` & `qrlayout-ui`)
 
-**[View Live Demo 2](https://qr-layout-design-react-demo.netlify.app/)**
+**[View Live Demo 2 (React)](https://qr-layout-design-react-demo.netlify.app/)**
+
+**[View Live Demo 3 (Svelte)](https://qr-layout-designer-svelte.netlify.app/)**
 
 ![QR Layout Designer Screenshot](./assets/layout_designer.png)
 

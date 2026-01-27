@@ -2,10 +2,12 @@
 
 A framework-agnostic, embeddable UI for designing sticker layouts with QR codes. Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-layout-generate-tool).
 
-[**🚀 Live Demo**](https://qr-layout-designer.netlify.app/)
+- **[ React Live Demo](https://qr-layout-designer.netlify.app/)**
+- **[ Svelte Live Demo](https://qr-layout-designer-svelte.netlify.app/)**
 
-- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/ui-react)**: Reference implementation for monorepo usage.
+- **[React Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/ui-demo)**: Reference implementation for monorepo usage.
 
+- **[Svelte Demo Source Code](https://github.com/shashi089/qr-code-layout-generate-tool/tree/main/examples/svelte-demo)**: Reference implementation for Svelte 5 + Tailwind CSS.
 
 ![QR Layout Designer Screenshot](https://github.com/shashi089/qr-code-layout-generate-tool/raw/main/assets/layout_designer.png)
 
@@ -173,7 +175,33 @@ onUnmounted(() => {
 </template>
 ```
 
-### 3. Vanilla JavaScript / HTML
+### 3. Svelte 5 (Runes)
+
+```svelte
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { QRLayoutDesigner } from 'qrlayout-ui';
+  import 'qrlayout-ui/style.css';
+
+  let container = $state<HTMLDivElement | null>(null);
+  let designer: QRLayoutDesigner | null = null;
+
+  onMount(() => {
+    if (!container) return;
+
+    designer = new QRLayoutDesigner({
+      element: container,
+      onSave: (data) => console.log('Saved Layout:', data)
+    });
+
+    return () => designer?.destroy();
+  });
+</script>
+
+<div bind:this={container} style="width: 100%; height: 800px;"></div>
+```
+
+### 4. Vanilla JavaScript / HTML
 
 ```html
 <!DOCTYPE html>

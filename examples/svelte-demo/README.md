@@ -2,7 +2,11 @@
 
 An industrial-grade QR code label design and printing application built with [SvelteKit](https://kit.svelte.dev/) and Tailwind CSS. This project is a modern port of the React-based `ui-demo`, leveraging Svelte 5's runes for state management and creating a high-performance, SEO-friendly web application.
 
-## 🚀 Features
+##  Live Demo
+
+**[View Live Application](https://qr-layout-designer-svelte.netlify.app/)**
+
+##  Features
 
 *   **Visual Label Designer**: Drag-and-drop interface to create pixel-perfect label templates for any industrial use case.
 *   **Master Data Management**: Dedicated modules for managing:
@@ -13,7 +17,7 @@ An industrial-grade QR code label design and printing application built with [Sv
 *   **Local Persistence**: All data is stored securely in your browser's LocalStorage - no backend required for the demo.
 *   **Responsive Design**: A premium, mobile-friendly UI built with Tailwind CSS.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 *   **Framework**: SvelteKit (Svelte 5)
 *   **Styling**: Tailwind CSS v4
@@ -21,7 +25,7 @@ An industrial-grade QR code label design and printing application built with [Sv
 *   **Core Logic**: `qrlayout-core` (Label generation, PDF/ZPL export)
 *   **UI Components**: `qrlayout-ui` (Designer canvas)
 
-## 📦 Installation
+##  Installation
 
 1.  **Clone the repository**:
     ```bash
@@ -42,7 +46,7 @@ An industrial-grade QR code label design and printing application built with [Sv
 4.  **Open your browser**:
     Navigate to `http://localhost:5173` to launch the application.
 
-## 🏗️ Building for Production
+##  Building for Production
 
 To create a production version of your app:
 
@@ -52,7 +56,7 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
-## 🎨 Theme & Customization
+##  Theme & Customization
 
 The application uses a **Teal & Emerald** industrial theme. 
 - Primary Color: `teal-600`
@@ -60,7 +64,7 @@ The application uses a **Teal & Emerald** industrial theme.
 
 To customize the theme, edit the Tailwind classes in `src/routes/+layout.svelte` and the individual page components.
 
-## 📂 Project Structure
+##  Project Structure
 
 *   `src/routes/`: Application pages (file-based routing).
     *   `labels/`: Label template management.
@@ -70,10 +74,10 @@ To customize the theme, edit the Tailwind classes in `src/routes/+layout.svelte`
 *   `src/lib/components/`: Reusable UI components (e.g., `Table.svelte`).
 *   `src/lib/services/`: Business logic and data services (e.g., `storage.ts`).
 
-## 🤝 Contributing
+##  Contributing
 
 Feel free to fork this project and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
 
-## 📄 License
+##  License
 
 MIT
