@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-svelte-50: #fff4f1;
+	--color-svelte-100: #ffe8e0;
+	--color-svelte-200: #ffcdbf;
+	--color-svelte-300: #ffaa96;
+	--color-svelte-400: #ff7043;
+	--color-svelte-500: #ff5722;
+	--color-svelte-600: #ff3e00;
+	--color-svelte-700: #cc3200;
+	--color-svelte-800: #992600;
+	--color-svelte-900: #7a1800;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: auto;
+	overflow-x: hidden;
+}
+
+:root {
+	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}

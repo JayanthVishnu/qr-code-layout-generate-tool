@@ -37,9 +37,9 @@ onUnmounted(() => {
     designer = null;
 });
 
-// Re-create when the layout or schemas data changes structurally
+// Re-create only when the layout ID or schemas change
 watch(
-    () => [JSON.stringify(props.initialLayout), JSON.stringify(props.entitySchemas)],
+    () => [props.initialLayout?.id, JSON.stringify(props.entitySchemas)],
     mount
 );
 </script>

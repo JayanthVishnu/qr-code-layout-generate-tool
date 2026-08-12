@@ -1,6 +1,6 @@
 # svelte-qr-label
 
-**The official Svelte 5 component for the QR Layout Designer — drag-and-drop label design with PDF, PNG, and ZPL export.**
+**A simple drag-and-drop label designer component for Svelte 5.**
 
 [![npm version](https://img.shields.io/npm/v/svelte-qr-label.svg)](https://www.npmjs.com/package/svelte-qr-label)
 [![npm downloads](https://img.shields.io/npm/dm/svelte-qr-label.svg)](https://www.npmjs.com/package/svelte-qr-label)
@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Enabled-blue.svg)](https://www.typescriptlang.org/)
 [![GitHub Stars](https://img.shields.io/github/stars/shashi089/qr-code-label-designer?style=social)](https://github.com/shashi089/qr-code-label-designer/stargazers)
 
-Drop a fully featured label designer into your Svelte 5 app with a single component. Users can drag and drop elements, bind `{{variables}}` from your data schema, preview in real-time, and export to PDF, PNG, or ZPL for Zebra thermal printers.
+A Svelte 5 component to design labels with text, QR codes, and barcodes. Easily create layouts, use dynamic data, and export to PDF, PNG, or ZPL thermal printers.
 
 Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-label-designer) monorepo — also available for [React](../react-qr-label), [Vue 3](../vue-qr-label), and [vanilla JS](../ui).
 
@@ -18,7 +18,7 @@ Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-label-designer
 
 | Framework | Live Demo | Source Code |
 | :--- | :--- | :--- |
-| **Svelte 5** | [▶ Open Demo](https://qr-layout-designer-svelte.netlify.app/) | [Source](https://github.com/shashi089/qr-code-label-designer/tree/main/examples/svelte-demo) |
+| **Svelte 5** | [▶ Open Demo](https://qr-layout-designer-svelte.netlify.app/) | [Source](https://github.com/shashi089/qr-code-label-designer/tree/main/examples/svelte-qr-label-demo) |
 
 ![QR Layout Designer Screenshot](https://github.com/shashi089/qr-code-label-designer/raw/main/assets/layout_designer.png)
 
@@ -34,7 +34,7 @@ Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-label-designer
 - **Label Size Presets** — common shipping, badge, and tag sizes built in
 - **Snap-to-Grid** — optional 1-unit grid snapping while dragging
 - **Alignment Toolbar** — align selected elements to the label edges or center
-- **Undo / Redo** — 20-step history (Ctrl+Z / Ctrl+Y)
+- **Undo / Redo** — 20-step history (Ctrl+Z / Ctrl+Y) with smooth drag preservation
 - **Keyboard Shortcuts** — Delete, Arrow nudge, Shift+Arrow, Ctrl+D duplicate, Escape
 - **Dark Mode** — built-in light and dark themes
 - **Flexible Units** — design in mm, cm, in, or px
@@ -122,11 +122,11 @@ npm install svelte-qr-label
 
 | Prop | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `initialLayout` | `StickerLayout` | ❌ | Layout to pre-load on mount. The designer re-creates itself when this changes. |
-| `entitySchemas` | `Record<string, EntitySchema>` | ❌ | Field definitions for `{{variable}}` binding and live preview. The designer re-creates itself when this changes. |
+| `initialLayout` | `StickerLayout` | ❌ | Layout to pre-load on mount. Re-creates designer only when `initialLayout.id` changes. |
+| `entitySchemas` | `Record<string, EntitySchema>` | ❌ | Field definitions for `{{variable}}` binding and live preview. |
 | `onsave` | `(layout: StickerLayout) => void` | ❌ | Called when the user clicks "Save Layout". Uses Svelte 5's lowercase event convention. |
 
-> **Svelte 5 note:** `onsave` follows Svelte 5's lowercase prop convention for event handlers. It updates reactively without re-creating the designer canvas.
+> **Svelte 5 Runes Optimization:** Internal effect dependencies use `untrack()` so dragging or resizing canvas elements mutates state locally without re-instantiating the designer or closing the side property drawer. `onsave` updates reactively.
 
 ---
 

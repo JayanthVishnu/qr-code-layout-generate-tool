@@ -70,7 +70,7 @@ function App() {
   }, []);
 
   const handleCreateNew = () => {
-    setEditingLayout(null);
+    setEditingLayout({ ...DEFAULT_NEW_LAYOUT, id: crypto.randomUUID() } as StickerLayout);
     setSubView('designer');
   };
 
@@ -121,8 +121,8 @@ function App() {
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             className="designer-container"
             entitySchemas={SAMPLE_SCHEMAS}
-            initialLayout={editingLayout || { ...DEFAULT_NEW_LAYOUT, id: crypto.randomUUID() } as StickerLayout}
-            onSave={(layout) => {
+            initialLayout={editingLayout || ({ ...DEFAULT_NEW_LAYOUT, id: 'temp-new-layout' } as StickerLayout)}
+            onSave={(layout: StickerLayout) => {
               console.log(layout, "layout");
               storage.addLabel(layout);
               setLabels(storage.getLabels());

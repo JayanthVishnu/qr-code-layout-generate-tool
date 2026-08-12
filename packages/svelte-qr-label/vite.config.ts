@@ -10,12 +10,19 @@ export default defineConfig({
     ],
     build: {
         lib: {
-            entry: path.resolve(__dirname, 'src/index.ts'),
-            name: 'SvelteQrLabel',
-            fileName: (format) => `svelte-qr-label.${format === 'es' ? 'js' : 'cjs'}`
+            entry: {
+                'svelte-qr-label': path.resolve(__dirname, 'src/index.ts'),
+                'pdf': path.resolve(__dirname, 'src/pdf.ts')
+            },
+            formats: ['es', 'cjs']
         },
         rollupOptions: {
-            external: ['svelte', 'qrlayout-core', 'qrlayout-ui'],
+            external: (id) =>
+                id === 'svelte' ||
+                id.startsWith('svelte/') ||
+                id === 'qrlayout-core' ||
+                id.startsWith('qrlayout-core/') ||
+                id === 'qrlayout-ui',
             output: {
                 globals: {
                     svelte: 'Svelte',

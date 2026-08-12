@@ -208,17 +208,17 @@ export class QRLayoutDesigner {
                     <button id="toggle-left" class="sidebar-toggle" title="Toggle Settings">☰</button>
                     <button id="toggle-right" class="sidebar-toggle" title="Toggle Properties" style="display: none;">✎</button>
 
+                    <div class="canvas-wrapper">
+                        <canvas data-el="preview-canvas"></canvas>
+                        <div data-el="editor-overlay" class="editor-overlay"></div>
+                    </div>
+
                     <div class="canvas-toolbar">
                         <label class="snap-grid-label" title="Snap elements to a 1-unit grid while dragging">
                             <input type="checkbox" data-action="toggle-grid" />
                             <span>Snap to Grid</span>
                         </label>
                         <span class="canvas-toolbar-hint">Del — delete · Arrow — nudge · Shift+Arrow — nudge 5x · Ctrl+D — duplicate</span>
-                    </div>
-
-                    <div class="canvas-wrapper">
-                        <canvas data-el="preview-canvas"></canvas>
-                        <div data-el="editor-overlay" class="editor-overlay"></div>
                     </div>
                 </main>
 
@@ -826,21 +826,26 @@ export class QRLayoutDesigner {
                 handle.className = "resize-handle";
                 item.appendChild(handle);
 
+                this.editorOverlay.appendChild(item);
+            }
+
+            const handle = item.querySelector('.resize-handle') as HTMLElement;
+            if (handle) {
                 handle.onmousedown = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    this.startElementResize(e, el, item!);
+                    const liveEl = this.currentLayout.elements.find(x => x.id === el.id) || el;
+                    this.startElementResize(e, liveEl, item!);
                 };
-
-                item.onmousedown = (e) => {
-                    if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
-                    e.preventDefault();
-                    this.selectElement(el.id);
-                    this.startElementDrag(e, el, item!);
-                };
-
-                this.editorOverlay.appendChild(item);
             }
+
+            item.onmousedown = (e) => {
+                if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
+                e.preventDefault();
+                const liveEl = this.currentLayout.elements.find(x => x.id === el.id) || el;
+                this.selectElement(liveEl.id);
+                this.startElementDrag(e, liveEl, item!);
+            };
 
             item.classList.toggle("selected", this.selectedElementId === el.id);
             item.style.left = `${el.x * this.pxPerUnit}px`;
@@ -850,7 +855,8 @@ export class QRLayoutDesigner {
         });
     }
 
-    private startElementResize(e: MouseEvent, el: StickerElement, item: HTMLElement) {
+    private startElementResize(e: MouseEvent, targetEl: StickerElement, item: HTMLElement) {
+        const el = this.currentLayout.elements.find(x => x.id === targetEl.id) || targetEl;
         this.snapshot();
         this.isDragging = true;
         const startX = e.clientX;
@@ -879,7 +885,8 @@ export class QRLayoutDesigner {
         window.addEventListener("mouseup", onUp);
     }
 
-    private startElementDrag(e: MouseEvent, el: StickerElement, item: HTMLElement) {
+    private startElementDrag(e: MouseEvent, targetEl: StickerElement, item: HTMLElement) {
+        const el = this.currentLayout.elements.find(x => x.id === targetEl.id) || targetEl;
         this.snapshot();
         this.isDragging = true;
         const startX = e.clientX;

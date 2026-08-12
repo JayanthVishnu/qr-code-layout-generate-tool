@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { untrack } from 'svelte';
     import { QRLayoutDesigner } from 'qrlayout-ui';
     import type { StickerLayout, EntitySchema } from 'qrlayout-ui';
     import 'qrlayout-ui/style.css';
@@ -19,34 +20,38 @@
         style = '',
     }: Props = $props();
 
-    let container: HTMLDivElement;
+    let container: HTMLDivElement | undefined = $state();
     let designer: QRLayoutDesigner | null = null;
 
-    // Re-create whenever initialLayout or entitySchemas changes.
-    // JSON.stringify ensures deep change detection without extra deps.
     $effect(() => {
-        const _a = JSON.stringify(initialLayout);
+        const layoutId = initialLayout?.id;
         const _b = JSON.stringify(entitySchemas);
 
         if (!container) return;
-        designer?.destroy();
-        designer = new QRLayoutDesigner({
-            element: container,
-            initialLayout,
-            entitySchemas,
-            onSave: (layout) => onsave?.(layout),
+
+        untrack(() => {
+            designer?.destroy();
+            designer = new QRLayoutDesigner({
+                element: container!,
+                initialLayout,
+                entitySchemas,
+                onSave: (layout) => onsave?.(layout),
+            });
         });
 
         return () => {
-            designer?.destroy();
-            designer = null;
+            untrack(() => {
+                designer?.destroy();
+                designer = null;
+            });
         };
     });
 
-    // Update the save callback reference without re-creating the designer
     $effect(() => {
-        if (designer && onsave !== undefined) {
-            (designer as any).onSaveCallback = (layout: StickerLayout) => onsave?.(layout);
+        if (designer) {
+            (designer as any).onSaveCallback = (layout: StickerLayout) => {
+                onsave?.(layout);
+            };
         }
     });
 </script>
@@ -55,4 +60,4 @@
     bind:this={container}
     class={className}
     style="width:100%;height:100%;{style}"
-/>
+></div>
