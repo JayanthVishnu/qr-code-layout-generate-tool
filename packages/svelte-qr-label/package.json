@@ -49,12 +49,19 @@
   "type": "module",
   "main": "./dist/svelte-qr-label.cjs",
   "module": "./dist/svelte-qr-label.js",
+  "svelte": "./dist/svelte-qr-label.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "svelte": "./dist/svelte-qr-label.js",
       "import": "./dist/svelte-qr-label.js",
       "require": "./dist/svelte-qr-label.cjs"
+    },
+    "./pdf": {
+      "types": "./dist/pdf.d.ts",
+      "import": "./dist/pdf.js",
+      "require": "./dist/pdf.cjs"
     },
     "./style.css": "./dist/svelte-qr-label.css"
   },

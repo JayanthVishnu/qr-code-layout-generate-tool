@@ -19,7 +19,7 @@ export function QRLabelDesigner({ className, style, ...options }: QRLabelDesigne
   const onSaveRef = useRef(options.onSave);
   onSaveRef.current = options.onSave;
 
-  const initialLayoutStr = JSON.stringify(options.initialLayout);
+  const initialLayoutId = options.initialLayout?.id;
   const entitySchemasStr = JSON.stringify(options.entitySchemas);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function QRLabelDesigner({ className, style, ...options }: QRLabelDesigne
         designerRef.current = null;
       }
     };
-  }, [initialLayoutStr, entitySchemasStr]);
+  }, [initialLayoutId, entitySchemasStr]);
 
   useEffect(() => {
     if (designerRef.current) {

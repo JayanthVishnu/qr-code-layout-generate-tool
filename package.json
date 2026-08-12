@@ -30,7 +30,8 @@
   },
   "workspaces": [
     "packages/*",
-    "examples/react-qr-label-demo"
+    "examples/react-qr-label-demo",
+    "examples/svelte-qr-label-demo"
   ],
   "scripts": {
     "dev:ui": "npm --workspace packages/ui run dev",
