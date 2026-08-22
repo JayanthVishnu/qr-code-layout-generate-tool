@@ -9,6 +9,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Multi-select** — Ctrl+Click to add/remove elements from selection; Ctrl+A to select all
+- **Group drag** — move all selected elements together
+- **Alignment tools** — align selected elements relative to each other (left/center/right/top/middle/bottom edges) or to the label boundary
+- **Preview PDF** — button in the designer sidebar opens a modal with a live PDF (or PNG fallback) preview
+- **Preview ZPL** — button in the designer sidebar shows the generated ZPL code and a Labelary live preview image; DPI selector (203 / 300 / 600) and Copy ZPL button included
+- `exportToZPLAsync()` on `StickerPrinter` — async variant that renders QR codes as GRF bitmaps (`^GFA`) when the native `^BQ` magnification limit (10×) would make the QR too small; required for correct QR sizing at 300/600 DPI
 - `packages/vue-qr-label` — Vue 3 Composition API wrapper
   - `<QRLabelDesigner :initial-layout :entity-schemas @save />` component
   - Reactive re-mount when `initialLayout` or `entitySchemas` change; callback updates without re-creating
@@ -21,7 +27,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Keyboard shortcuts** — `Delete`/`Backspace`, Arrow nudge, `Shift+Arrow` ×5, `Ctrl+D` duplicate, `Escape` deselect
 - **Label size presets** dropdown (7 common mm and inch sizes)
 - **Snap-to-grid** — 1-unit grid with dot overlay that scales with canvas zoom
-- **Element alignment toolbar** — 6 directions; all actions recorded in undo stack
 - `parseContent` and `toPx` / `toDots` extracted into `src/utils/` and exported from the package
 - Vitest test suite for `qrlayout-core` — 54 tests covering `parseContent`, unit conversion, and ZPL generation
 - `test` and `test:watch` scripts in `qrlayout-core`
@@ -29,9 +34,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Barcode element** (`type: "barcode"`) — `CODE128`, `EAN13`, `UPCA`, `CODE39`, `ITF14` via `jsbarcode`; canvas, PDF, ZPL, and designer UI all supported
 
 ### Changed
+- Editor elements always show a dashed border so field boundaries are visible while editing other fields (previously the border was invisible until selected)
 - `pdf.ts` imports `parseContent` from shared utils instead of its own copy
 - Canvas renderer converts `fontSize` pt → px via `pt × (96/72)` — all three renderers now consistently treat `fontSize` as points
 - Removed orphaned `packages/react-qr-label-designer` (stale build artefacts, no source)
+
+### Fixed
+- ZPL text alignment — center and right alignment defined in the designer now correctly apply in ZPL output via `^FB` (previously all text was left-aligned regardless of the style setting)
+- QR code size at 300/600 DPI — QR elements now print at the correct physical size on high-resolution printers
 
 ---
 

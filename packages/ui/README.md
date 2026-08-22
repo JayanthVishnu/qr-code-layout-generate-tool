@@ -31,15 +31,18 @@ Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-label-designer
 
 - **Framework Independent** — Built with vanilla TypeScript; mount inside React, Vue, Angular, Svelte, or a plain HTML page.
 - **Drag & Drop Designer** — Visual placement and resizing of text, QR, and barcode elements on a canvas.
+- **Multi-Select** — Ctrl+Click or Ctrl+A to select multiple elements; drag them all together.
+- **Alignment Tools** — Align selected elements relative to each other or snap them to the label edges.
+- **Always-visible borders** — Element outlines stay visible while you're editing, so you can see field boundaries at all times.
 - **Live Preview** — Preview your label with real sample data as you design.
+- **Preview PDF / Preview ZPL** — Built-in buttons to preview the label as a PDF or as a Labelary-rendered ZPL image with DPI selector (203 / 300 / 600).
 - **Data Binding** — Bind any field like `{{name}}`, `{{id}}`, or `{{department}}` from your entity schema.
 - **Multi-Variable QR** — Set a separator (e.g. `|`) on QR elements to automatically join multiple fields into one scan.
 - **Rich Text Styling** — Font size, weight, and alignment in the designer; color, font family, word-wrap, and line height via JSON.
 - **Undo / Redo** — 20-step history with Ctrl+Z / Ctrl+Y.
-- **Keyboard Shortcuts** — Delete, Arrow nudge, Shift+Arrow ×5, Ctrl+D duplicate, Escape.
+- **Keyboard Shortcuts** — Delete, Arrow nudge, Shift+Arrow ×5, Ctrl+D duplicate, Ctrl+A select all, Escape.
 - **Label Size Presets** — Common shipping, badge, and tag sizes built in.
 - **Snap-to-Grid** — Optional 1-unit grid snapping for drag and resize.
-- **Element Alignment Toolbar** — 6 directions (left / center / right / top / center / bottom).
 - **Dark Mode** — Built-in light and dark themes.
 - **Flexible Units** — Design in mm, cm, in, or px.
 - **JSON Output** — Save the layout as a compact JSON object to your backend or `localStorage`.
@@ -176,8 +179,11 @@ for (const record of records) {
 const pdf = await printer.exportToPDF(layout, records);
 pdf.save("batch-badges.pdf");
 
-// ZPL — for Zebra / thermal printers
-const zplPages = printer.exportToZPL(layout, records);
+// ZPL — for Zebra / thermal printers (sync, 203 DPI)
+const zplPages = printer.exportToZPL(layout, records, { dpi: 203 });
+
+// ZPL — async variant for 300/600 DPI; ensures QR codes print at the correct size
+const zplPages = await printer.exportToZPLAsync(layout, records, { dpi: 300 });
 ```
 
 ---
