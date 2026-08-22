@@ -261,6 +261,146 @@ export class StickerPrinter {
         });
     }
 
+    /**
+     * Async variant of `exportToZPL` that renders QR codes as `^GFA` bitmap graphics when
+     * the element size exceeds ZPL's native QR magnification limit (mag > 10).
+     * Use this for 300 / 600 DPI printers where large QR codes would otherwise print too small.
+     */
+    public async exportToZPLAsync(
+        layout: StickerLayout,
+        dataList: Record<string, any>[],
+        options?: ZplOptions
+    ): Promise<string[]> {
+        const dpi          = options?.dpi ?? 203;
+        const dpmm         = dpi / 25.4;
+        const qrErrorLevel = options?.qrErrorCorrection ?? "M";
+
+        const escapeFieldData = (text: string): { prefix: string; value: string } => {
+            const needsEscape = /[\^~_]/.test(text);
+            if (!needsEscape) return { prefix: "", value: text };
+            const escaped = text
+                .replace(/_/g, "_5F")
+                .replace(/\^/g, "_5E")
+                .replace(/~/g,  "_7E");
+            return { prefix: "^FH", value: escaped };
+        };
+
+        const results: string[] = [];
+
+        for (const data of dataList) {
+            const widthDots  = toDots(layout.width,  layout.unit, dpmm);
+            const heightDots = toDots(layout.height, layout.unit, dpmm);
+
+            let zpl = "^XA\n";
+            zpl += `^PW${widthDots}\n`;
+            zpl += `^LL${heightDots}\n`;
+
+            for (const element of layout.elements) {
+                const filledContent = parseContent(
+                    element.content,
+                    data,
+                    element.type === "qr" ? element.qrSeparator : undefined
+                );
+                const x = toDots(element.x, layout.unit, dpmm);
+                const y = toDots(element.y, layout.unit, dpmm);
+
+                if (element.type === "text") {
+                    const fontSizePt     = element.style?.fontSize || 12;
+                    const fontHeightDots = Math.round(fontSizePt * (dpi / 72));
+                    const { prefix, value } = escapeFieldData(filledContent);
+                    const wDots  = toDots(element.w, layout.unit, dpmm);
+                    const align  = element.style?.textAlign;
+                    const justify = align === "center" ? "C" : align === "right" ? "R" : "L";
+                    zpl += `^FO${x},${y}^A0N,${fontHeightDots},${fontHeightDots}^FB${wDots},10,0,${justify},0${prefix}^FD${value}^FS\n`;
+
+                } else if (element.type === "qr") {
+                    const wDots   = toDots(element.w, layout.unit, dpmm);
+                    const hDots   = toDots(element.h, layout.unit, dpmm);
+                    const idealMag = Math.floor(wDots / 21);
+
+                    if (idealMag <= 10 && filledContent) {
+                        // Native ^BQ: within ZPL magnification range
+                        const mag = Math.max(1, idealMag);
+                        const { prefix, value } = escapeFieldData(filledContent);
+                        zpl += `^FO${x},${y}^BQN,2,${mag},${qrErrorLevel}${prefix}^FD${qrErrorLevel}A,${value}^FS\n`;
+                    } else if (filledContent) {
+                        // ^GFA bitmap: used when mag > 10 (high DPI or large QR element)
+                        // This preserves the designed physical size regardless of printer DPI
+                        const hex = await this.qrContentToGRF(filledContent, wDots, hDots);
+                        if (hex) {
+                            const bytesPerRow = Math.ceil(wDots / 8);
+                            const totalBytes  = bytesPerRow * hDots;
+                            zpl += `^FO${x},${y}^GFA,${totalBytes},${totalBytes},${bytesPerRow},${hex}^FS\n`;
+                        }
+                    }
+
+                } else if (element.type === "barcode") {
+                    const hDots  = toDots(element.h, layout.unit, dpmm);
+                    const format = element.barcodeFormat || "CODE128";
+                    const { prefix, value } = escapeFieldData(filledContent);
+                    let barcodeCmd: string;
+                    switch (format) {
+                        case "EAN13":  barcodeCmd = `^BEN,${hDots},Y,N`;   break;
+                        case "UPCA":   barcodeCmd = `^BUN,${hDots},Y,N,N`; break;
+                        case "CODE39": barcodeCmd = `^B3N,N,${hDots},Y,N`; break;
+                        case "ITF14":  barcodeCmd = `^BIN,${hDots},Y,N`;   break;
+                        default:       barcodeCmd = `^BCN,${hDots},Y,N,N`; break;
+                    }
+                    zpl += `^FO${x},${y}${barcodeCmd}${prefix}^FD${value}^FS\n`;
+                }
+            }
+
+            zpl += "^XZ";
+            results.push(zpl);
+        }
+
+        return results;
+    }
+
+    /**
+     * Renders a QR code string into a ZPL-compatible GRF hex string.
+     * Each bit = 1 printer dot; 1 = black, 0 = white, MSB first, padded to byte boundary.
+     */
+    private async qrContentToGRF(content: string, wDots: number, hDots: number): Promise<string> {
+        const qrUrl = await generateQR(content);
+        if (!qrUrl) return "";
+
+        return new Promise<string>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas  = this.createCanvas();
+                canvas.width  = wDots;
+                canvas.height = hDots;
+                const ctx = canvas.getContext("2d")!;
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, wDots, hDots);
+                ctx.drawImage(img, 0, 0, wDots, hDots);
+
+                const { data: pixels } = ctx.getImageData(0, 0, wDots, hDots);
+                const bytesPerRow = Math.ceil(wDots / 8);
+                let hex = "";
+
+                for (let row = 0; row < hDots; row++) {
+                    for (let byteIdx = 0; byteIdx < bytesPerRow; byteIdx++) {
+                        let byte = 0;
+                        for (let bit = 0; bit < 8; bit++) {
+                            const pixelX = byteIdx * 8 + bit;
+                            if (pixelX < wDots) {
+                                const i = (row * wDots + pixelX) * 4;
+                                const brightness = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+                                if (brightness < 128) byte |= (0x80 >> bit);
+                            }
+                        }
+                        hex += byte.toString(16).padStart(2, "0").toUpperCase();
+                    }
+                }
+                resolve(hex);
+            };
+            img.onerror = () => resolve("");
+            img.src = qrUrl;
+        });
+    }
+
     private createCanvas(): HTMLCanvasElement {
         if (typeof document === "undefined") {
             throw new Error(
@@ -333,8 +473,12 @@ export class StickerPrinter {
                     // 1 pt = 1/72 inch; dots = pt * (dpi / 72)
                     const fontHeightDots = Math.round(fontSizePt * (dpi / 72));
                     const { prefix, value } = escapeFieldData(filledContent);
+                    const wDots  = toDots(element.w, layout.unit, dpmm);
+                    const align  = element.style?.textAlign;
+                    // ^FB carries text alignment into ZPL — without it all text is left-aligned
+                    const justify = align === "center" ? "C" : align === "right" ? "R" : "L";
 
-                    zpl += `^FO${x},${y}^A0N,${fontHeightDots},${fontHeightDots}${prefix}^FD${value}^FS\n`;
+                    zpl += `^FO${x},${y}^A0N,${fontHeightDots},${fontHeightDots}^FB${wDots},10,0,${justify},0${prefix}^FD${value}^FS\n`;
 
                 } else if (element.type === "qr") {
                     const wDots = toDots(element.w, layout.unit, dpmm);

@@ -37,6 +37,26 @@ It is split into two focused npm packages:
 
 ---
 
+## Features
+
+**Designer**
+- Drag, resize, and position text, QR, and barcode elements on a canvas
+- Multi-select elements with Ctrl+Click or Ctrl+A, then drag them together
+- Align selected elements to each other or to the label edges
+- Always-visible dashed borders so you can see field boundaries while editing
+- Snap to grid, undo/redo, dark mode
+
+**Export**
+- **ZPL** — for Zebra thermal printers; correct text alignment (left/center/right) and accurate QR code sizing at 203, 300, and 600 DPI
+- **PDF** — via optional `jspdf` dependency
+- **Canvas/PNG** — for image previews
+
+**Preview (built into the designer UI)**
+- Preview PDF directly in the browser
+- Preview ZPL with a live Labelary render — select DPI and copy the ZPL code
+
+---
+
 ## Quick Start
 
 ### Headless (Core only)
@@ -60,11 +80,15 @@ const layout = {
   ]
 };
 
+// Sync — standard DPI (203)
 const zplPages = printer.exportToZPL(layout, [
   { name: "Alice",   id: "EMP-001" },
   { name: "Bob",     id: "EMP-002" },
   { name: "Charlie", id: "EMP-003" },
 ]);
+
+// Async — use for 300/600 DPI; renders QR as bitmap when needed for correct sizing
+const zplPages = await printer.exportToZPLAsync(layout, records, { dpi: 300 });
 ```
 
 ### Embedded Visual Designer
@@ -178,6 +202,8 @@ npm run build:ui    # Build UI
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 ---
 

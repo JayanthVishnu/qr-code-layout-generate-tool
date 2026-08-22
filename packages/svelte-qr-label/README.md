@@ -1,6 +1,6 @@
 # svelte-qr-label
 
-**A simple drag-and-drop label designer component for Svelte 5.**
+Svelte 5 component for designing and printing QR code labels.
 
 [![npm version](https://img.shields.io/npm/v/svelte-qr-label.svg)](https://www.npmjs.com/package/svelte-qr-label)
 [![npm downloads](https://img.shields.io/npm/dm/svelte-qr-label.svg)](https://www.npmjs.com/package/svelte-qr-label)
@@ -27,15 +27,18 @@ Part of the [QR Layout Tool](https://github.com/shashi089/qr-code-label-designer
 ## Features
 
 - **Drag & Drop Designer** — visually place and resize text, QR, and barcode elements on a canvas
+- **Multi-Select** — Ctrl+Click or Ctrl+A to select multiple elements; drag them all at once
+- **Alignment Tools** — align selected elements relative to each other or to the label edges
+- **Always-visible borders** — field outlines are always shown so you can see where elements are while editing others
 - **Live Preview** — see your label render with real sample data as you design
+- **Preview PDF / Preview ZPL** — built-in buttons to preview the label as a PDF or as a Labelary-rendered ZPL image (203 / 300 / 600 DPI)
 - **`{{variable}}` Data Binding** — bind fields like `{{name}}`, `{{id}}`, `{{department}}` from your entity schema
 - **Multi-Variable QR** — join multiple fields into one QR scan with a configurable separator
 - **Rich Text Styling** — font size, weight, alignment; color, font family, word wrap, and line height
 - **Label Size Presets** — common shipping, badge, and tag sizes built in
 - **Snap-to-Grid** — optional 1-unit grid snapping while dragging
-- **Alignment Toolbar** — align selected elements to the label edges or center
-- **Undo / Redo** — 20-step history (Ctrl+Z / Ctrl+Y) with smooth drag preservation
-- **Keyboard Shortcuts** — Delete, Arrow nudge, Shift+Arrow, Ctrl+D duplicate, Escape
+- **Undo / Redo** — 20-step history (Ctrl+Z / Ctrl+Y)
+- **Keyboard Shortcuts** — Delete, Arrow nudge, Shift+Arrow, Ctrl+D duplicate, Ctrl+A select all, Escape
 - **Dark Mode** — built-in light and dark themes
 - **Flexible Units** — design in mm, cm, in, or px
 - **JSON Output** — saves a compact layout JSON you store in your backend
@@ -152,7 +155,12 @@ pdf.save('badges.pdf');
 import { StickerPrinter } from 'svelte-qr-label';
 
 const printer = new StickerPrinter();
+
+// Standard (sync) — good for 203 DPI
 const zplPages = printer.exportToZPL(layoutJSON, records, { dpi: 203 });
+
+// Async — use for 300/600 DPI; ensures QR codes print at the correct size
+const zplPages = await printer.exportToZPLAsync(layoutJSON, records, { dpi: 300 });
 ```
 
 ### Export to PNG

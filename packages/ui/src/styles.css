@@ -545,7 +545,7 @@
 /* EDITOR OVERLAY */
 .qrlayout-designer .editor-item {
   position: absolute;
-  border: 2px solid transparent;
+  border: 1px dashed rgba(99, 102, 241, 0.35);
   box-sizing: border-box;
   cursor: move;
 }
@@ -553,6 +553,10 @@
 .qrlayout-designer .editor-item.selected {
   border: 2px solid var(--primary-color);
   background: rgba(99, 102, 241, 0.05);
+}
+
+.qrlayout-designer .editor-item:not(.selected) .resize-handle {
+  display: none;
 }
 
 .qrlayout-designer .resize-handle {

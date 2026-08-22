@@ -1,1014 +1,604 @@
-import { StickerPrinter, StickerLayout, StickerElement } from "qrlayout-core";
-import "./styles.css";
+import { StickerPrinter, StickerLayout, StickerElement } from 'qrlayout-core'
+import './styles.css'
 
-export { StickerPrinter };
-export type { StickerLayout, StickerElement };
-export type { BarcodeFormat } from "qrlayout-core";
+import { DesignerState } from './state'
+import { CanvasManager } from './canvas-manager'
+import { PropertyPanel, MultiSelectCallbacks } from './property-panel'
+import { buildTemplate } from './template'
+import type { DesignerLayout, EntitySchema, DesignerOptions } from './types'
 
-interface DesignerLayout extends StickerLayout {
-    targetEntity?: string;
-}
+export { StickerPrinter }
+export type { StickerLayout, StickerElement }
+export type { BarcodeFormat } from 'qrlayout-core'
+export type { EntityField, EntitySchema, DesignerOptions } from './types'
 
-export interface EntityField {
-    name: string;
-    label: string;
-}
-
-export interface EntitySchema {
-    label: string;
-    fields: EntityField[];
-    sampleData: any;
-}
-
-export interface DesignerOptions {
-    element: HTMLElement;
-    initialLayout?: StickerLayout;
-    entitySchemas?: Record<string, EntitySchema>;
-    onSave?: (layout: StickerLayout) => void;
-}
+const VALID_HEX = /^#[0-9A-F]{6}$/i
 
 export class QRLayoutDesigner {
-    private container: HTMLElement;
-    private currentLayout: DesignerLayout;
-    private entitySchemas: Record<string, EntitySchema>;
-    private selectedElementId: string | null = null;
-    private isDarkMode = false;
-    private pxPerUnit = 1;
-    private isDragging = false;
-    private printer: StickerPrinter;
-    private onSaveCallback?: (layout: StickerLayout) => void;
+    private readonly container: HTMLElement
+    private readonly state: DesignerState
+    private readonly entitySchemas: Record<string, EntitySchema>
+    private readonly onSaveCallback?: (layout: StickerLayout) => void
+    private canvasMgr!: CanvasManager
+    private propPanel!: PropertyPanel
+    private selectedIds: Set<string> = new Set()
+    private isDarkMode = false
 
-    private undoStack: string[] = [];
-    private redoStack: string[] = [];
-    private readonly MAX_UNDO = 20;
+    private _keyHandler!: (e: KeyboardEvent) => void
+    private _resizeObserver!: ResizeObserver
+    private _previewTimer: ReturnType<typeof setTimeout> | null = null
 
-    private snapToGrid = false;
-    private readonly GRID_SIZE = 1;
-
-    private _keyHandler!: (e: KeyboardEvent) => void;
-
-    private canvas!: HTMLCanvasElement;
-    private editorOverlay!: HTMLDivElement;
-    private elementsContainer!: HTMLDivElement;
-    private propertyPanel!: HTMLDivElement;
-    private propContent!: HTMLDivElement;
-    private leftSidebar!: HTMLElement;
-    private rightSidebar!: HTMLElement;
-    private sampleDataContainer!: HTMLDivElement;
-    private undoBtn!: HTMLButtonElement;
-    private redoBtn!: HTMLButtonElement;
+    private elementsContainer!: HTMLDivElement
+    private leftSidebar!: HTMLElement
+    private rightSidebar!: HTMLElement
+    private sampleDataContainer!: HTMLDivElement
+    private undoBtn!: HTMLButtonElement
+    private redoBtn!: HTMLButtonElement
+    private toggleRight!: HTMLButtonElement
+    private pdfModal!: HTMLDivElement
+    private pdfContainer!: HTMLDivElement
+    private zplModal!: HTMLDivElement
+    private zplCodeEl!: HTMLTextAreaElement
+    private zplImageContainer!: HTMLDivElement
+    private zplDpiSelect!: HTMLSelectElement
 
     private inputs!: {
-        entity: HTMLSelectElement;
-        name: HTMLInputElement;
-        width: HTMLInputElement;
-        height: HTMLInputElement;
-        unit: HTMLSelectElement;
-        labelWidth: HTMLLabelElement;
-        labelHeight: HTMLLabelElement;
-        bg: HTMLInputElement;
-        bgPicker: HTMLInputElement;
-        sampleData: HTMLDivElement;
-    };
+        entity: HTMLSelectElement
+        name: HTMLInputElement
+        width: HTMLInputElement
+        height: HTMLInputElement
+        unit: HTMLSelectElement
+        labelWidth: HTMLLabelElement
+        labelHeight: HTMLLabelElement
+        bg: HTMLInputElement
+        bgPicker: HTMLInputElement
+    }
 
     constructor(options: DesignerOptions) {
-        this.container = options.element;
-        this.printer = new StickerPrinter();
-        this.onSaveCallback = options.onSave;
-        this.entitySchemas = options.entitySchemas || {};
+        this.container = options.element
+        this.entitySchemas = options.entitySchemas || {}
+        this.onSaveCallback = options.onSave
 
-        this.currentLayout = (options.initialLayout as DesignerLayout) || {
-            id: "layout-" + Date.now(),
-            name: "New Layout",
-            targetEntity: "",
+        const layout = (options.initialLayout as DesignerLayout) || {
+            id: 'layout-' + Date.now(),
+            name: 'New Layout',
+            targetEntity: '',
             width: 100,
             height: 60,
-            unit: "mm",
-            backgroundColor: "#ffffff",
+            unit: 'mm',
+            backgroundColor: '#ffffff',
             elements: []
-        };
+        }
 
-        this.init();
+        this.state = new DesignerState(layout, () => this.updateUndoButtons())
+        this.init()
+    }
+
+    private get layout(): DesignerLayout {
+        return this.state.layout
     }
 
     private init() {
-        this.renderTemplate();
-        this.cacheDOM();
-        this.renderEntityOptions();
-        this.syncInputsFromLayout();
-        this.bindEvents();
-        this.renderSampleDataEditor();
-        this.renderElementsList();
-        this.updatePreview();
-    }
-
-    private renderTemplate() {
-        this.container.classList.add("qrlayout-designer");
-        this.container.innerHTML = `
-        <header>
-            <div data-el="header-left"></div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <button class="btn btn-icon btn-outline" data-el="undo-btn" data-action="undo" title="Undo (Ctrl+Z)" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-                </button>
-                <button class="btn btn-icon btn-outline" data-el="redo-btn" data-action="redo" title="Redo (Ctrl+Y)" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
-                </button>
-                <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
-                <button class="btn btn-icon btn-outline" data-action="toggle-theme" title="Toggle Dark Mode">
-                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                </button>
-                <button class="btn btn-primary" data-action="save">Save Layout</button>
-            </div>
-        </header>
-        <div class="main-container">
-            <div class="edit-view" style="display: flex; flex: 1; height: 100%;">
-                <!-- LEFT SIDEBAR: CONFIG & ELEMENTS -->
-                <aside class="sidebar">
-                    <!-- Configuration -->
-                    <div class="sidebar-section">
-                        <div class="sidebar-title">Layout Settings</div>
-                        <div class="form-group">
-                            <label>Target Entity</label>
-                            <select data-input="entity">
-                                <option value="">Select Entity...</option>
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Internal Layout Name</label>
-                            <input type="text" data-input="name" placeholder="Standard Badge" />
-                        </div>
-                        <div class="form-group">
-                            <label>Size Preset</label>
-                            <select data-input="preset">
-                                <option value="">Custom</option>
-                                <option value="100x60mm">Badge — 100 × 60 mm</option>
-                                <option value="100x50mm">EU Standard — 100 × 50 mm</option>
-                                <option value="50x25mm">Mini Tag — 50 × 25 mm</option>
-                                <option value="62x29mm">Brother QL — 62 × 29 mm</option>
-                                <option value="4x6in">Shipping Label — 4" × 6"</option>
-                                <option value="3x2in">Asset Tag — 3" × 2"</option>
-                                <option value="2x1in">Small Label — 2" × 1"</option>
-                            </select>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group" style="flex: 1">
-                                <label data-label="width">Width (mm)</label>
-                                <input type="number" data-input="width" value="100" step="0.01" />
-                            </div>
-                            <div class="form-group" style="flex: 1">
-                                <label data-label="height">Height (mm)</label>
-                                <input type="number" data-input="height" value="60" step="0.01" />
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Measurement Unit</label>
-                            <select data-input="unit">
-                                <option value="mm">Millimeters (mm)</option>
-                                <option value="cm">Centimeters (cm)</option>
-                                <option value="in">Inches (in)</option>
-                                <option value="px">Pixels (px)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Base Background</label>
-                            <div class="color-picker-wrapper">
-                                <input type="color" data-input="bg-picker" class="color-preview" style="padding: 0; border: 1px solid var(--border-color); cursor: pointer; background: none;" />
-                                <input type="text" data-input="bg" value="#ffffff" placeholder="#ffffff" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Elements List -->
-                    <div class="sidebar-section">
-                        <div class="sidebar-title">
-                            Elements
-                            <div style="display: flex; gap: 6px">
-                                <button class="btn btn-outline btn-sm" data-action="add-text" title="Add Text">+ Text</button>
-                                <button class="btn btn-outline btn-sm" data-action="add-qr" title="Add QR">+ QR</button>
-                                <button class="btn btn-outline btn-sm" data-action="add-barcode" title="Add Barcode">+ Barcode</button>
-                            </div>
-                        </div>
-                        <div data-el="elements-container" class="element-list" style="margin-top: 8px;"></div>
-                    </div>
-
-                    <!-- Sample Data Trigger -->
-                    <div class="sidebar-section" style="margin-top: auto; border-top: 1px solid var(--border-color); border-bottom: none;">
-                        <button class="btn btn-outline btn-block" data-action="edit-sample-data" style="gap: 10px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-                            Edit Sample Data
-                        </button>
-                    </div>
-                </aside>
-
-                <!-- CENTER: CANVAS -->
-                <main class="preview-area">
-                    <button id="toggle-left" class="sidebar-toggle" title="Toggle Settings">☰</button>
-                    <button id="toggle-right" class="sidebar-toggle" title="Toggle Properties" style="display: none;">✎</button>
-
-                    <div class="canvas-wrapper">
-                        <canvas data-el="preview-canvas"></canvas>
-                        <div data-el="editor-overlay" class="editor-overlay"></div>
-                    </div>
-
-                    <div class="canvas-toolbar">
-                        <label class="snap-grid-label" title="Snap elements to a 1-unit grid while dragging">
-                            <input type="checkbox" data-action="toggle-grid" />
-                            <span>Snap to Grid</span>
-                        </label>
-                        <span class="canvas-toolbar-hint">Del — delete · Arrow — nudge · Shift+Arrow — nudge 5x · Ctrl+D — duplicate</span>
-                    </div>
-                </main>
-
-                <!-- RIGHT SIDEBAR: PROPERTIES -->
-                <aside class="sidebar-right" data-el="property-panel" style="display: none;">
-                    <div class="sidebar-section">
-                        <div class="sidebar-title">Element Properties</div>
-                        <div data-el="prop-content"></div>
-                        <button class="btn btn-danger btn-block" data-action="delete-element" style="margin-top: 24px">Delete Element</button>
-                    </div>
-                </aside>
-            </div>
-        </div>
-
-        <!-- MODAL FOR SAMPLE DATA -->
-        <div class="modal-overlay" data-el="sample-data-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Edit Sample Data</h3>
-                    <button class="btn-close" data-action="close-modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 20px;">
-                        Update the values below to see how they appear on your layout in real-time.
-                    </p>
-                    <div data-el="sample-data-container" class="sample-data-grid"></div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" data-action="close-modal">Done Editing</button>
-                </div>
-            </div>
-        </div>
-        `;
+        this.container.classList.add('qrlayout-designer')
+        this.container.innerHTML = buildTemplate()
+        this.cacheDOM()
+        this.renderEntityOptions()
+        this.syncInputsFromLayout()
+        this.bindEvents()
+        this.renderSampleDataEditor()
+        this.renderElementsList()
+        this.updatePreview()
     }
 
     private cacheDOM() {
-        const q = (sel: string) => this.container.querySelector(sel) as HTMLElement;
-        const qi = (key: string) => this.container.querySelector(`[data-input="${key}"]`) as any;
+        const q = <T extends HTMLElement>(sel: string) => this.container.querySelector<T>(sel)!
+        const qi = <T extends HTMLElement>(key: string) => this.container.querySelector<T>(`[data-input="${key}"]`)!
 
-        this.canvas = q('[data-el="preview-canvas"]') as HTMLCanvasElement;
-        this.editorOverlay = q('[data-el="editor-overlay"]') as HTMLDivElement;
-        this.elementsContainer = q('[data-el="elements-container"]') as HTMLDivElement;
-        this.propertyPanel = q('[data-el="property-panel"]') as HTMLDivElement;
-        this.propContent = q('[data-el="prop-content"]') as HTMLDivElement;
-        this.leftSidebar = q('.sidebar');
-        this.rightSidebar = q('.sidebar-right');
-        this.undoBtn = q('[data-el="undo-btn"]') as HTMLButtonElement;
-        this.redoBtn = q('[data-el="redo-btn"]') as HTMLButtonElement;
+        const canvas = q<HTMLCanvasElement>('[data-el="preview-canvas"]')
+        const overlay = q<HTMLDivElement>('[data-el="editor-overlay"]')
+        this.canvasMgr = new CanvasManager(canvas, overlay, new StickerPrinter())
+
+        const panel = q<HTMLDivElement>('[data-el="property-panel"]')
+        const content = q<HTMLDivElement>('[data-el="prop-content"]')
+        this.propPanel = new PropertyPanel(panel, content)
+
+        this.elementsContainer = q<HTMLDivElement>('[data-el="elements-container"]')
+        this.leftSidebar = q('.sidebar')
+        this.rightSidebar = q('.sidebar-right')
+
+        // Click on blank canvas to deselect
+        overlay.addEventListener('mousedown', (e) => {
+            if ((e.target as HTMLElement) === overlay) this.selectElement(null)
+        })
+        this.undoBtn = q<HTMLButtonElement>('[data-el="undo-btn"]')
+        this.redoBtn = q<HTMLButtonElement>('[data-el="redo-btn"]')
+        this.toggleRight = q<HTMLButtonElement>('#toggle-right')
+        this.sampleDataContainer = q<HTMLDivElement>('[data-el="sample-data-container"]')
+        this.pdfModal = q<HTMLDivElement>('[data-el="pdf-preview-modal"]')
+        this.pdfContainer = q<HTMLDivElement>('[data-el="pdf-preview-container"]')
+        this.zplModal = q<HTMLDivElement>('[data-el="zpl-preview-modal"]')
+        this.zplCodeEl = q<HTMLTextAreaElement>('[data-el="zpl-code"]')
+        this.zplImageContainer = q<HTMLDivElement>('[data-el="zpl-preview-image"]')
+        this.zplDpiSelect = q<HTMLSelectElement>('[data-el="zpl-dpi"]')
 
         this.inputs = {
-            entity: qi('entity'),
-            name: qi('name'),
-            width: qi('width'),
-            height: qi('height'),
-            unit: qi('unit'),
-            labelWidth: q('[data-label="width"]') as HTMLLabelElement,
-            labelHeight: q('[data-label="height"]') as HTMLLabelElement,
-            bg: qi('bg'),
-            bgPicker: qi('bg-picker'),
-            sampleData: q('[data-el="sample-data-container"]') as HTMLDivElement
-        };
-        this.sampleDataContainer = this.inputs.sampleData;
+            entity: qi<HTMLSelectElement>('entity'),
+            name: qi<HTMLInputElement>('name'),
+            width: qi<HTMLInputElement>('width'),
+            height: qi<HTMLInputElement>('height'),
+            unit: qi<HTMLSelectElement>('unit'),
+            labelWidth: q<HTMLLabelElement>('[data-label="width"]'),
+            labelHeight: q<HTMLLabelElement>('[data-label="height"]'),
+            bg: qi<HTMLInputElement>('bg'),
+            bgPicker: qi<HTMLInputElement>('bg-picker'),
+        }
     }
 
     private renderEntityOptions() {
-        const select = this.inputs.entity;
-        while (select.options.length > 1) {
-            select.remove(1);
-        }
+        const select = this.inputs.entity
+        while (select.options.length > 1) select.remove(1)
 
-        Object.keys(this.entitySchemas).forEach(key => {
-            const schema = this.entitySchemas[key];
-            const option = document.createElement("option");
-            option.value = key;
-            option.text = schema.label || key;
-            select.add(option);
-        });
+        Object.entries(this.entitySchemas).forEach(([key, schema]) => {
+            const opt = document.createElement('option')
+            opt.value = key
+            opt.text = schema.label || key
+            select.add(opt)
+        })
     }
 
     private syncInputsFromLayout() {
-        this.inputs.entity.value = this.currentLayout.targetEntity || "";
-        this.inputs.name.value = this.currentLayout.name;
-        this.inputs.width.value = String(this.currentLayout.width);
-        this.inputs.height.value = String(this.currentLayout.height);
-        this.inputs.unit.value = this.currentLayout.unit;
-        this.inputs.labelWidth.innerText = `Width (${this.currentLayout.unit})`;
-        this.inputs.labelHeight.innerText = `Height (${this.currentLayout.unit})`;
-        this.inputs.bg.value = this.currentLayout.backgroundColor || "#ffffff";
-        const isValidHex = (val: string) => /^#[0-9A-F]{6}$/i.test(val);
-        if (isValidHex(this.inputs.bg.value)) {
-            this.inputs.bgPicker.value = this.inputs.bg.value;
-        }
+        this.inputs.entity.value = this.layout.targetEntity || ''
+        this.inputs.name.value = this.layout.name
+        this.inputs.width.value = String(this.layout.width)
+        this.inputs.height.value = String(this.layout.height)
+        this.inputs.unit.value = this.layout.unit
+        this.inputs.labelWidth.innerText = `Width (${this.layout.unit})`
+        this.inputs.labelHeight.innerText = `Height (${this.layout.unit})`
+        const bg = this.layout.backgroundColor || '#ffffff'
+        this.inputs.bg.value = bg
+        if (VALID_HEX.test(bg)) this.inputs.bgPicker.value = bg
     }
 
     private bindEvents() {
-        this.undoBtn.addEventListener('click', () => this.undo());
-        this.redoBtn.addEventListener('click', () => this.redo());
+        this.bindThemeAndSave()
+        this.bindModalAndNav()
+        this.bindLayoutInputs()
+        this.bindElementToolbar()
+        this.bindKeyboard()
+        this.bindResizeObserver()
+        this.bindPreviewModals()
+    }
+
+    private bindThemeAndSave() {
+        this.undoBtn.addEventListener('click', () => this.undo())
+        this.redoBtn.addEventListener('click', () => this.redo())
 
         this.container.querySelector('[data-action="toggle-theme"]')?.addEventListener('click', (e) => {
-            this.isDarkMode = !this.isDarkMode;
-            this.container.classList.toggle("dark-mode", this.isDarkMode);
-            const btn = (e.currentTarget as HTMLElement);
-            const sun = btn.querySelector('.sun-icon') as HTMLElement;
-            const moon = btn.querySelector('.moon-icon') as HTMLElement;
-            if (this.isDarkMode) {
-                sun.style.display = 'block';
-                moon.style.display = 'none';
-            } else {
-                sun.style.display = 'none';
-                moon.style.display = 'block';
-            }
-        });
-
-        this.container.querySelector('[data-action="export-json"]')?.addEventListener('click', () => {
-            const blob = new Blob([JSON.stringify(this.currentLayout, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${this.currentLayout.name.toLowerCase().replace(/ /g, "-")}.json`;
-            a.click();
-        });
+            this.isDarkMode = !this.isDarkMode
+            this.container.classList.toggle('dark-mode', this.isDarkMode)
+            const btn = e.currentTarget as HTMLElement
+            ;(btn.querySelector('.sun-icon') as HTMLElement).style.display = this.isDarkMode ? 'block' : 'none'
+            ;(btn.querySelector('.moon-icon') as HTMLElement).style.display = this.isDarkMode ? 'none' : 'block'
+        })
 
         this.container.querySelector('[data-action="save"]')?.addEventListener('click', () => {
-            if (this.onSaveCallback) {
-                this.onSaveCallback(this.currentLayout);
-            }
-        });
+            this.onSaveCallback?.(this.layout)
+        })
+    }
 
+    private bindModalAndNav() {
         this.container.querySelector('[data-action="edit-sample-data"]')?.addEventListener('click', () => {
-            this.showSampleDataModal();
-        });
-
+            this.renderSampleDataEditor()
+            this.container.querySelector('[data-el="sample-data-modal"]')?.classList.add('show')
+        })
         this.container.querySelectorAll('[data-action="close-modal"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.container.querySelector('[data-el="sample-data-modal"]')?.classList.remove('show');
-            });
-        });
-
+                this.container.querySelector('[data-el="sample-data-modal"]')?.classList.remove('show')
+            })
+        })
         this.container.querySelector('#toggle-left')?.addEventListener('click', () => {
-            this.leftSidebar.classList.toggle("show");
-        });
-        const toggleRight = this.container.querySelector('#toggle-right');
-        toggleRight?.addEventListener('click', () => {
-            this.rightSidebar.classList.toggle("show");
-        });
+            this.leftSidebar.classList.toggle('show')
+        })
+        this.toggleRight.addEventListener('click', () => {
+            this.rightSidebar.classList.toggle('show')
+        })
+    }
 
+    private bindLayoutInputs() {
         this.inputs.entity.onchange = (e) => {
-            this.currentLayout.targetEntity = (e.target as HTMLSelectElement).value;
-            this.renderSampleDataEditor();
-            this.renderPropertyPanel();
-            this.updatePreview();
-        };
-        this.inputs.name.oninput = (e) => this.currentLayout.name = (e.target as HTMLInputElement).value;
-        this.inputs.width.oninput = (e) => { this.currentLayout.width = parseFloat((e.target as HTMLInputElement).value) || 100; this.updatePreview(); };
-        this.inputs.height.oninput = (e) => { this.currentLayout.height = parseFloat((e.target as HTMLInputElement).value) || 60; this.updatePreview(); };
-        this.inputs.unit.onchange = (e) => {
-            this.currentLayout.unit = (e.target as HTMLSelectElement).value as any;
-            this.inputs.labelWidth.innerText = `Width (${this.currentLayout.unit})`;
-            this.inputs.labelHeight.innerText = `Height (${this.currentLayout.unit})`;
-            this.updatePreview();
-        };
-        this.inputs.bg.oninput = (e) => {
-            const val = (e.target as HTMLInputElement).value;
-            this.currentLayout.backgroundColor = val;
-            const isValidHex = (v: string) => /^#[0-9A-F]{6}$/i.test(v);
-            if (isValidHex(val)) {
-                this.inputs.bgPicker.value = val;
-            }
-            this.updatePreview();
-        };
-
-        this.inputs.bgPicker.oninput = (e) => {
-            const val = (e.target as HTMLInputElement).value;
-            this.currentLayout.backgroundColor = val;
-            this.inputs.bg.value = val;
-            this.updatePreview();
-        };
-
-        this.container.querySelector('[data-action="add-text"]')?.addEventListener('click', () => {
-            this.snapshot();
-            const id = "t" + Date.now();
-            this.currentLayout.elements.push({ id, type: 'text', x: 10, y: 10, w: 40, h: 10, content: "New Text" });
-            this.selectElement(id);
-            this.updatePreview();
-        });
-
-        this.container.querySelector('[data-action="add-qr"]')?.addEventListener('click', () => {
-            this.snapshot();
-            const id = "q" + Date.now();
-            this.currentLayout.elements.push({ id, type: 'qr', x: 5, y: 5, w: 20, h: 20, content: "{{id}}" });
-            this.selectElement(id);
-            this.updatePreview();
-        });
-
-        this.container.querySelector('[data-action="add-barcode"]')?.addEventListener('click', () => {
-            this.snapshot();
-            const id = "b" + Date.now();
-            this.currentLayout.elements.push({ id, type: 'barcode', x: 5, y: 5, w: 50, h: 15, content: "{{id}}", barcodeFormat: 'CODE128' });
-            this.selectElement(id);
-            this.updatePreview();
-        });
-
-        this.container.querySelector('[data-action="delete-element"]')?.addEventListener('click', () => {
-            this.deleteSelectedElement();
-        });
-
-        this.container.querySelector('[data-action="toggle-grid"]')?.addEventListener('change', (e) => {
-            this.snapToGrid = (e.target as HTMLInputElement).checked;
-            this.updateEditorOverlay();
-        });
-
-        const presetSelect = this.container.querySelector('[data-input="preset"]') as HTMLSelectElement;
-        presetSelect?.addEventListener('change', (e) => {
-            const val = (e.target as HTMLSelectElement).value;
-            if (val) {
-                this.applyPreset(val);
-                (e.target as HTMLSelectElement).value = "";
-            }
-        });
-
-        this._keyHandler = (e: KeyboardEvent) => {
-            const tag = (document.activeElement as HTMLElement)?.tagName;
-            const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-
-            if (isInput) return;
-
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault(); this.undo(); return;
-            }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                e.preventDefault(); this.redo(); return;
-            }
-            if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedElementId) {
-                e.preventDefault(); this.deleteSelectedElement(); return;
-            }
-            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && this.selectedElementId) {
-                e.preventDefault(); this.nudgeSelected(e.key, e.shiftKey ? 5 : 1); return;
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.selectedElementId) {
-                e.preventDefault(); this.duplicateSelected(); return;
-            }
-            if (e.key === 'Escape') {
-                this.selectElement(null); return;
-            }
-        };
-        document.addEventListener('keydown', this._keyHandler);
-
-        new ResizeObserver(() => {
-            if (this.container.offsetWidth > 768) {
-                this.leftSidebar.classList.remove("show");
-                this.rightSidebar.classList.remove("show");
-            }
-            this.renderPropertyPanel();
-        }).observe(this.container);
-    }
-
-    public async updatePreview() {
-        if (!this.canvas || !this.currentLayout) return;
-
-        const sampleData = (this.currentLayout.targetEntity && this.entitySchemas[this.currentLayout.targetEntity])
-            ? this.entitySchemas[this.currentLayout.targetEntity].sampleData
-            : {};
-
-        // Skipping canvas re-render during drag prevents other elements from shaking.
-        if (!this.isDragging) {
-            await this.printer.renderToCanvas(this.currentLayout, sampleData, this.canvas);
-            const rect = this.canvas.getBoundingClientRect();
-            if (rect.width > 0 && this.currentLayout.width > 0) {
-                this.pxPerUnit = rect.width / this.currentLayout.width;
-            }
+            this.layout.targetEntity = (e.target as HTMLSelectElement).value
+            this.renderSampleDataEditor()
+            this.refreshPropertyPanel()
+            this.updatePreview()
         }
-
-        this.updateEditorOverlay();
+        this.inputs.name.oninput = (e) => {
+            this.layout.name = (e.target as HTMLInputElement).value
+        }
+        this.inputs.width.oninput = (e) => {
+            const val = Number.parseFloat((e.target as HTMLInputElement).value)
+            if (val > 0) { this.layout.width = val; this.schedulePreview() }
+        }
+        this.inputs.height.oninput = (e) => {
+            const val = Number.parseFloat((e.target as HTMLInputElement).value)
+            if (val > 0) { this.layout.height = val; this.schedulePreview() }
+        }
+        this.inputs.unit.onchange = (e) => {
+            this.layout.unit = (e.target as HTMLSelectElement).value as any
+            this.inputs.labelWidth.innerText = `Width (${this.layout.unit})`
+            this.inputs.labelHeight.innerText = `Height (${this.layout.unit})`
+            this.updatePreview()
+        }
+        this.inputs.bg.oninput = (e) => {
+            const val = (e.target as HTMLInputElement).value
+            this.layout.backgroundColor = val
+            if (VALID_HEX.test(val)) this.inputs.bgPicker.value = val
+            this.schedulePreview()
+        }
+        this.inputs.bgPicker.oninput = (e) => {
+            const val = (e.target as HTMLInputElement).value
+            this.layout.backgroundColor = val
+            this.inputs.bg.value = val
+            this.schedulePreview()
+        }
     }
 
-    private showSampleDataModal() {
-        this.renderSampleDataEditor();
-        this.container.querySelector('[data-el="sample-data-modal"]')?.classList.add('show');
+    private bindElementToolbar() {
+        this.container.querySelector('[data-action="add-text"]')?.addEventListener('click', () => {
+            this.state.snapshot()
+            const id = 't' + Date.now()
+            this.layout.elements.push({ id, type: 'text', x: 10, y: 10, w: 40, h: 10, content: 'New Text' })
+            this.selectElement(id)
+            this.updatePreview()
+        })
+        this.container.querySelector('[data-action="add-qr"]')?.addEventListener('click', () => {
+            this.state.snapshot()
+            const id = 'q' + Date.now()
+            this.layout.elements.push({ id, type: 'qr', x: 5, y: 5, w: 20, h: 20, content: '{{id}}' })
+            this.selectElement(id)
+            this.updatePreview()
+        })
+        this.container.querySelector('[data-action="add-barcode"]')?.addEventListener('click', () => {
+            this.state.snapshot()
+            const id = 'b' + Date.now()
+            this.layout.elements.push({ id, type: 'barcode', x: 5, y: 5, w: 50, h: 15, content: '{{id}}', barcodeFormat: 'CODE128' })
+            this.selectElement(id)
+            this.updatePreview()
+        })
+        this.container.querySelector('[data-action="delete-element"]')?.addEventListener('click', () => {
+            this.deleteSelectedElement()
+        })
+        this.container.querySelector('[data-action="toggle-grid"]')?.addEventListener('change', (e) => {
+            this.canvasMgr.snapToGrid = (e.target as HTMLInputElement).checked
+            this.refreshOverlay()
+        })
+        const presetSelect = this.container.querySelector<HTMLSelectElement>('[data-input="preset"]')
+        presetSelect?.addEventListener('change', (e) => {
+            const val = (e.target as HTMLSelectElement).value
+            if (val) { this.applyPreset(val); (e.target as HTMLSelectElement).value = '' }
+        })
+    }
+
+    private bindKeyboard() {
+        this._keyHandler = (e: KeyboardEvent) => this.handleKeyDown(e)
+        document.addEventListener('keydown', this._keyHandler)
+    }
+
+    private handleKeyDown(e: KeyboardEvent) {
+        const tag = (document.activeElement as HTMLElement)?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+        const ctrl = e.ctrlKey || e.metaKey
+        if (ctrl && e.key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo() }
+        else if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); this.redo() }
+        else if (ctrl && e.key === 'a') { e.preventDefault(); this.selectAll() }
+        else if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedIds.size > 0) { e.preventDefault(); this.deleteSelectedElement() }
+        else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && this.selectedIds.size > 0) { e.preventDefault(); this.nudgeSelected(e.key, e.shiftKey ? 5 : 1) }
+        else if (ctrl && e.key === 'd' && this.selectedIds.size > 0) { e.preventDefault(); this.duplicateSelected() }
+        else if (e.key === 'Escape') { this.selectElement(null) }
+    }
+
+    private bindResizeObserver() {
+        this._resizeObserver = new ResizeObserver(() => {
+            if (this.container.offsetWidth > 768) {
+                this.leftSidebar.classList.remove('show')
+                this.rightSidebar.classList.remove('show')
+            }
+            this.refreshPropertyPanel()
+        })
+        this._resizeObserver.observe(this.container)
+    }
+
+    private refreshOverlay() {
+        this.canvasMgr.updateOverlay(
+            this.layout.elements,
+            this.selectedIds,
+            (id, ctrlKey) => this.selectElement(id, ctrlKey),
+            (e, el, item) => {
+                this.state.snapshot()
+                const companions = this.layout.elements.filter(x => this.selectedIds.has(x.id) && x.id !== el.id)
+                this.canvasMgr.startDrag(e, el, item, companions, () => this.refreshPropertyPanel(), () => { this.updatePreview(); this.refreshPropertyPanel() })
+            },
+            (e, el, item) => {
+                this.state.snapshot()
+                this.canvasMgr.startResize(e, el, item, () => this.refreshPropertyPanel(), () => { this.updatePreview(); this.refreshPropertyPanel() })
+            }
+        )
     }
 
     private renderSampleDataEditor() {
-        if (!this.sampleDataContainer) return;
+        if (!this.sampleDataContainer) return
 
-        const entity = this.currentLayout.targetEntity;
+        const entity = this.layout.targetEntity
         if (!entity || !this.entitySchemas[entity]) {
             this.sampleDataContainer.innerHTML = `
                 <div style="font-size: 0.75rem; color: var(--text-secondary); padding: 12px; background: var(--panel-bg-alt); border-radius: 8px; border: 1px dashed var(--border-color); text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                     <span>Select an entity above to see fields</span>
                 </div>
-            `;
-            return;
+            `
+            return
         }
 
-        const schema = this.entitySchemas[entity];
-        this.sampleDataContainer.innerHTML = "";
-
-        const grid = document.createElement("div");
-        grid.className = "sample-data-grid-container";
+        const schema = this.entitySchemas[entity]
+        this.sampleDataContainer.innerHTML = ''
+        const grid = document.createElement('div')
+        grid.className = 'sample-data-grid-container'
 
         schema.fields.forEach(field => {
-            const group = document.createElement("div");
-            group.className = "form-group";
-            group.style.margin = "0";
+            const group = document.createElement('div')
+            group.className = 'form-group'
+            group.style.margin = '0'
 
-            const label = document.createElement("label");
-            label.style.display = "flex";
-            label.style.justifyContent = "space-between";
+            const label = document.createElement('label')
+            label.style.display = 'flex'
+            label.style.justifyContent = 'space-between'
             label.innerHTML = `
                 <span>${field.label || field.name}</span>
                 <code style="font-size: 0.625rem; opacity: 0.6; background: var(--panel-bg-alt); padding: 1px 4px; border-radius: 3px;">{{${field.name}}}</code>
-            `;
+            `
 
-            const input = document.createElement("input");
-            input.type = "text";
-            input.value = schema.sampleData[field.name] || "";
-            input.placeholder = `Enter sample ${field.name}...`;
-            input.style.fontSize = "0.8125rem";
-
+            const input = document.createElement('input')
+            input.type = 'text'
+            input.value = schema.sampleData[field.name] || ''
+            input.placeholder = `Enter sample ${field.name}...`
+            input.style.fontSize = '0.8125rem'
             input.oninput = (e) => {
-                schema.sampleData[field.name] = (e.target as HTMLInputElement).value;
-                this.updatePreview();
-            };
+                schema.sampleData[field.name] = (e.target as HTMLInputElement).value
+                this.schedulePreview()
+            }
 
-            group.appendChild(label);
-            group.appendChild(input);
-            grid.appendChild(group);
-        });
+            group.appendChild(label)
+            group.appendChild(input)
+            grid.appendChild(group)
+        })
 
-        this.sampleDataContainer.appendChild(grid);
+        this.sampleDataContainer.appendChild(grid)
     }
 
     private renderElementsList() {
-        this.elementsContainer.innerHTML = "";
-        this.currentLayout.elements.forEach(el => {
-            const div = document.createElement("div");
-            div.className = `element-item ${this.selectedElementId === el.id ? "active" : ""}`;
+        this.elementsContainer.innerHTML = ''
+        this.layout.elements.forEach(el => {
+            const div = document.createElement('div')
+            div.className = `element-item ${this.selectedIds.has(el.id) ? 'active' : ''}`
             div.innerHTML = `
                 <div class="element-info">
                     <span class="element-name">${el.type.toUpperCase()}</span>
                     <span class="element-sub">${String(el.content).substring(0, 20)}</span>
                 </div>
-            `;
-            div.onclick = () => this.selectElement(el.id);
-            this.elementsContainer.appendChild(div);
-        });
+            `
+            div.onclick = (e) => this.selectElement(el.id, e.ctrlKey || e.metaKey)
+            this.elementsContainer.appendChild(div)
+        })
     }
 
-    private selectElement(id: string | null) {
-        this.selectedElementId = id;
-        this.renderElementsList();
-        this.renderPropertyPanel();
-        this.updateEditorOverlay();
+    private selectElement(id: string | null, addToSelection = false) {
+        if (id === null) {
+            this.selectedIds.clear()
+        } else if (addToSelection) {
+            if (this.selectedIds.has(id)) this.selectedIds.delete(id)
+            else this.selectedIds.add(id)
+        } else if (!this.selectedIds.has(id) || this.selectedIds.size > 1) {
+            this.selectedIds = new Set([id])
+        }
+        this.renderElementsList()
+        this.refreshPropertyPanel()
+        this.refreshOverlay()
 
-        if (id && this.container.offsetWidth <= 768) {
-            this.rightSidebar.classList.add("show");
+        if (this.selectedIds.size > 0 && this.container.offsetWidth <= 768) {
+            this.rightSidebar.classList.add('show')
         }
     }
 
-    private renderPropertyPanel() {
-        const toggleRight = this.container.querySelector("#toggle-right") as HTMLButtonElement;
-
-        if (!this.selectedElementId) {
-            this.propertyPanel.style.display = "none";
-            if (toggleRight) toggleRight.style.display = "none";
-            return;
-        }
-
-        if (this.container.offsetWidth <= 768) {
-            if (toggleRight) toggleRight.style.display = "flex";
-        } else {
-            if (toggleRight) toggleRight.style.display = "none";
-        }
-
-        const el = this.currentLayout.elements.find(e => e.id === this.selectedElementId);
-        if (!el) return;
-
-        this.propertyPanel.style.display = "block";
-        this.propContent.innerHTML = `
-            <!-- Alignment Toolbar -->
-            <div class="align-toolbar">
-                <span class="align-toolbar-label">Align to Label</span>
-                <div class="align-toolbar-btns">
-                    <button class="btn btn-icon btn-outline align-btn" data-align="left" title="Align Left Edge" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="6" height="8" rx="1"/><line x1="1" y1="1" x2="1" y2="13"/></svg>
-                    </button>
-                    <button class="btn btn-icon btn-outline align-btn" data-align="center-h" title="Center Horizontally" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="6" height="8" rx="1"/><line x1="7" y1="1" x2="7" y2="13"/></svg>
-                    </button>
-                    <button class="btn btn-icon btn-outline align-btn" data-align="right" title="Align Right Edge" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="3" width="6" height="8" rx="1"/><line x1="13" y1="1" x2="13" y2="13"/></svg>
-                    </button>
-                    <div class="align-sep"></div>
-                    <button class="btn btn-icon btn-outline align-btn" data-align="top" title="Align Top Edge" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="8" height="6" rx="1"/><line x1="1" y1="1" x2="13" y2="1"/></svg>
-                    </button>
-                    <button class="btn btn-icon btn-outline align-btn" data-align="center-v" title="Center Vertically" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="8" height="6" rx="1"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
-                    </button>
-                    <button class="btn btn-icon btn-outline align-btn" data-align="bottom" title="Align Bottom Edge" style="width:28px;height:28px;">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="8" height="6" rx="1"/><line x1="1" y1="13" x2="13" y2="13"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                ${el.type === 'qr' ? `
-                <label>Field Separator</label>
-                <input type="text" id="prop-qr-separator" placeholder="e.g. | or -" value="${el.qrSeparator || ''}">
-                ` : ''}
-                ${el.type === 'barcode' ? `
-                <label>Barcode Format</label>
-                <select id="prop-barcode-format">
-                    <option value="CODE128" ${(el.barcodeFormat || 'CODE128') === 'CODE128' ? 'selected' : ''}>CODE128 — Universal / Logistics</option>
-                    <option value="EAN13"   ${el.barcodeFormat === 'EAN13'   ? 'selected' : ''}>EAN-13 — Retail (12 digits)</option>
-                    <option value="UPCA"    ${el.barcodeFormat === 'UPCA'    ? 'selected' : ''}>UPC-A — US Retail (11 digits)</option>
-                    <option value="CODE39"  ${el.barcodeFormat === 'CODE39'  ? 'selected' : ''}>CODE39 — Industrial / MRO</option>
-                    <option value="ITF14"   ${el.barcodeFormat === 'ITF14'   ? 'selected' : ''}>ITF-14 — Carton / Pallet (13 digits)</option>
-                </select>
-                ` : ''}
-                <label>Content</label>
-                <textarea data-prop="content-val" rows="2">${el.content}</textarea>
-                <div class="field-buttons" data-el="field-suggestions"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group" style="flex:1;"><label>X (pos)</label><input type="number" step="0.01" data-prop="x" value="${el.x.toFixed(2)}"></div>
-                <div class="form-group" style="flex:1;"><label>Y (pos)</label><input type="number" step="0.01" data-prop="y" value="${el.y.toFixed(2)}"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group" style="flex:1;"><label>Width</label><input type="number" step="0.01" data-prop="w" value="${el.w.toFixed(2)}"></div>
-                <div class="form-group" style="flex:1;"><label>Height</label><input type="number" step="0.01" data-prop="h" value="${el.h.toFixed(2)}"></div>
-            </div>
-            ${el.type === 'text' ? `
-                <div style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
-                <div class="form-row">
-                    <div class="form-group" style="flex:1;">
-                        <label>Font Size</label>
-                        <input type="number" data-prop="fontSize" value="${el.style?.fontSize || 12}">
-                    </div>
-                    <div class="form-group" style="flex:1;">
-                        <label>Font Weight</label>
-                        <select data-prop="fontWeight">
-                            <option value="normal" ${el.style?.fontWeight === 'normal' ? 'selected' : ''}>Normal</option>
-                            <option value="bold" ${el.style?.fontWeight === 'bold' ? 'selected' : ''}>Bold</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Horizontal Align</label>
-                    <div class="toggle-group" style="width: 100%;">
-                        <button class="toggle-btn prop-align-h ${el.style?.textAlign === 'left' ? 'active' : ''}" data-val="left" style="flex:1;">Left</button>
-                        <button class="toggle-btn prop-align-h ${el.style?.textAlign === 'center' ? 'active' : ''}" data-val="center" style="flex:1;">Center</button>
-                        <button class="toggle-btn prop-align-h ${el.style?.textAlign === 'right' ? 'active' : ''}" data-val="right" style="flex:1;">Right</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Vertical Align</label>
-                    <div class="toggle-group" style="width: 100%;">
-                        <button class="toggle-btn prop-align-v ${el.style?.verticalAlign === 'top' ? 'active' : ''}" data-val="top" style="flex:1;">Top</button>
-                        <button class="toggle-btn prop-align-v ${el.style?.verticalAlign === 'middle' ? 'active' : ''}" data-val="middle" style="flex:1;">Middle</button>
-                        <button class="toggle-btn prop-align-v ${el.style?.verticalAlign === 'bottom' ? 'active' : ''}" data-val="bottom" style="flex:1;">Bottom</button>
-                    </div>
-                </div>
-            ` : ''}
-            ${el.type === 'barcode' ? `
-                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 12px 0 0; line-height: 1.5;">
-                    EAN-13 needs 12 digits &nbsp;·&nbsp; UPC-A needs 11 digits &nbsp;·&nbsp; ITF-14 needs 13 digits
-                </p>
-            ` : ''}
-        `;
-
-        this.propContent.querySelectorAll('.align-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.alignElement((btn as HTMLElement).dataset.align!);
-            });
-        });
-
-        const suggestions = this.propContent.querySelector('[data-el="field-suggestions"]');
-        const entitySchema = this.currentLayout.targetEntity ? this.entitySchemas[this.currentLayout.targetEntity] : null;
-
-        if (entitySchema && suggestions) {
-            entitySchema.fields.forEach(f => {
-                const pill = document.createElement("div");
-                pill.className = "field-pill";
-                pill.innerText = `+ ${f.label}`;
-                pill.onclick = () => {
-                    el.content += `{{${f.name}}}`;
-                    this.renderPropertyPanel();
-                    this.updatePreview();
-                };
-                suggestions.appendChild(pill);
-            });
-        }
-
-        const sepInput = this.propContent.querySelector("#prop-qr-separator");
-        if (sepInput) {
-            sepInput.addEventListener("input", (e) => {
-                el.qrSeparator = (e.target as HTMLInputElement).value;
-                this.updatePreview();
-            });
-        }
-
-        const barcodeFormatSelect = this.propContent.querySelector("#prop-barcode-format");
-        if (barcodeFormatSelect) {
-            barcodeFormatSelect.addEventListener("change", (e) => {
-                this.snapshot();
-                (el as any).barcodeFormat = (e.target as HTMLSelectElement).value;
-                this.updatePreview();
-            });
-        }
-
-        // Property inputs — live update on input, snapshot on blur (focus captures state before editing)
-        const link = (key: string, field: string, isNum = false, subField?: string) => {
-            const input = this.propContent.querySelector(`[data-prop="${key}"]`) as HTMLInputElement | null;
-            if (!input) return;
-
-            let preEditState: string | null = null;
-
-            input.addEventListener("focus", () => {
-                preEditState = JSON.stringify(this.currentLayout);
-            });
-
-            input.addEventListener("input", (e) => {
-                const val = (e.target as HTMLInputElement).value;
-                const finalVal = isNum ? parseFloat(val) || 0 : val;
-                if (subField) {
-                    if (!el.style) el.style = {};
-                    (el.style as any)[subField] = finalVal;
-                } else {
-                    (el as any)[field] = finalVal;
-                }
-                this.updatePreview();
-            });
-
-            input.addEventListener("blur", () => {
-                if (preEditState !== null) {
-                    this.undoStack.push(preEditState);
-                    if (this.undoStack.length > this.MAX_UNDO) this.undoStack.shift();
-                    this.redoStack = [];
-                    this.updateUndoButtons();
-                    preEditState = null;
-                }
-            });
-        };
-
-        link("content-val", "content");
-        link("x", "x", true);
-        link("y", "y", true);
-        link("w", "w", true);
-        link("h", "h", true);
-        link("fontSize", "style", true, "fontSize");
-        link("fontWeight", "style", false, "fontWeight");
-
-        this.propContent.querySelectorAll(".prop-align-h").forEach(btn => {
-            btn.addEventListener("click", () => {
-                this.snapshot();
-                if (!el.style) el.style = {};
-                el.style.textAlign = (btn as HTMLElement).dataset.val as any;
-                this.renderPropertyPanel();
-                this.updatePreview();
-            });
-        });
-
-        this.propContent.querySelectorAll(".prop-align-v").forEach(btn => {
-            btn.addEventListener("click", () => {
-                this.snapshot();
-                if (!el.style) el.style = {};
-                el.style.verticalAlign = (btn as HTMLElement).dataset.val as any;
-                this.renderPropertyPanel();
-                this.updatePreview();
-            });
-        });
+    private selectAll() {
+        this.selectedIds = new Set(this.layout.elements.map(e => e.id))
+        this.renderElementsList()
+        this.refreshPropertyPanel()
+        this.refreshOverlay()
     }
 
-    private updateEditorOverlay() {
-        if (!this.editorOverlay || !this.canvas) return;
+    private refreshPropertyPanel() {
+        const isMobile = this.container.offsetWidth <= 768
 
-        if (!this.isDragging) {
-            this.editorOverlay.style.width = this.canvas.style.width;
-            this.editorOverlay.style.height = this.canvas.style.height;
+        if (this.selectedIds.size === 0) {
+            this.propPanel.hide(this.toggleRight)
+            return
         }
 
-        if (this.snapToGrid && this.pxPerUnit > 0) {
-            const dotSpacing = this.GRID_SIZE * this.pxPerUnit;
-            this.editorOverlay.style.setProperty('--grid-dot-spacing', `${dotSpacing}px`);
-            this.editorOverlay.classList.add('show-grid');
-        } else {
-            this.editorOverlay.classList.remove('show-grid');
+        if (this.selectedIds.size > 1) {
+            this.propPanel.showMultiSelection(this.selectedIds.size, this.toggleRight, isMobile, {
+                alignRelative: (dir) => this.alignElementsRelative(dir),
+                alignToLabel: (dir) => this.alignAllToLabel(dir),
+            } as MultiSelectCallbacks)
+            return
         }
 
-        const existingIds = new Set(this.currentLayout.elements.map(e => e.id));
-        this.editorOverlay.querySelectorAll('.editor-item').forEach(node => {
-            if (!existingIds.has((node as HTMLElement).dataset.id!)) node.remove();
-        });
+        const el = this.layout.elements.find(e => this.selectedIds.has(e.id)) ?? null
+        if (!el) { this.propPanel.hide(this.toggleRight); return }
 
-        this.currentLayout.elements.forEach(el => {
-            let item = this.editorOverlay.querySelector(`.editor-item[data-id="${el.id}"]`) as HTMLElement | null;
+        const schema = this.layout.targetEntity
+            ? (this.entitySchemas[this.layout.targetEntity] ?? null)
+            : null
 
-            if (!item) {
-                item = document.createElement("div");
-                item.className = "editor-item";
-                item.dataset.id = el.id;
-
-                const handle = document.createElement("div");
-                handle.className = "resize-handle";
-                item.appendChild(handle);
-
-                this.editorOverlay.appendChild(item);
-            }
-
-            const handle = item.querySelector('.resize-handle') as HTMLElement;
-            if (handle) {
-                handle.onmousedown = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const liveEl = this.currentLayout.elements.find(x => x.id === el.id) || el;
-                    this.startElementResize(e, liveEl, item!);
-                };
-            }
-
-            item.onmousedown = (e) => {
-                if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
-                e.preventDefault();
-                const liveEl = this.currentLayout.elements.find(x => x.id === el.id) || el;
-                this.selectElement(liveEl.id);
-                this.startElementDrag(e, liveEl, item!);
-            };
-
-            item.classList.toggle("selected", this.selectedElementId === el.id);
-            item.style.left = `${el.x * this.pxPerUnit}px`;
-            item.style.top = `${el.y * this.pxPerUnit}px`;
-            item.style.width = `${el.w * this.pxPerUnit}px`;
-            item.style.height = `${el.h * this.pxPerUnit}px`;
-        });
+        this.propPanel.show(el, schema, this.toggleRight, isMobile, {
+            snapshot: () => this.state.snapshot(),
+            capture: () => this.state.capture(),
+            pushRaw: (raw) => this.state.pushRaw(raw),
+            update: () => this.schedulePreview(),
+            align: (dir) => this.alignElement(dir),
+            refreshPanel: () => this.refreshPropertyPanel(),
+        })
     }
 
-    private startElementResize(e: MouseEvent, targetEl: StickerElement, item: HTMLElement) {
-        const el = this.currentLayout.elements.find(x => x.id === targetEl.id) || targetEl;
-        this.snapshot();
-        this.isDragging = true;
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const initW = el.w;
-        const initH = el.h;
+    public async updatePreview() {
+        if (this._previewTimer !== null) {
+            clearTimeout(this._previewTimer)
+            this._previewTimer = null
+        }
 
-        const snap = (val: number) =>
-            this.snapToGrid ? Math.round(val / this.GRID_SIZE) * this.GRID_SIZE : val;
+        if (!this.canvasMgr.canvas || !this.layout) return
 
-        const onMove = (me: MouseEvent) => {
-            el.w = snap(Math.max(this.GRID_SIZE, initW + (me.clientX - startX) / this.pxPerUnit));
-            el.h = snap(Math.max(this.GRID_SIZE, initH + (me.clientY - startY) / this.pxPerUnit));
-            item.style.width = `${el.w * this.pxPerUnit}px`;
-            item.style.height = `${el.h * this.pxPerUnit}px`;
-            this.renderPropertyPanel();
-        };
-        const onUp = () => {
-            this.isDragging = false;
-            this.updatePreview();
-            this.renderPropertyPanel();
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-        };
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
+        const sampleData = (this.layout.targetEntity && this.entitySchemas[this.layout.targetEntity])
+            ? this.entitySchemas[this.layout.targetEntity].sampleData
+            : {}
+
+        if (!this.canvasMgr.isDragging) {
+            await this.canvasMgr.render(this.layout, sampleData)
+        }
+
+        this.refreshOverlay()
     }
 
-    private startElementDrag(e: MouseEvent, targetEl: StickerElement, item: HTMLElement) {
-        const el = this.currentLayout.elements.find(x => x.id === targetEl.id) || targetEl;
-        this.snapshot();
-        this.isDragging = true;
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const initX = el.x;
-        const initY = el.y;
-
-        const snap = (val: number) =>
-            this.snapToGrid ? Math.round(val / this.GRID_SIZE) * this.GRID_SIZE : val;
-
-        const onMove = (me: MouseEvent) => {
-            el.x = snap(initX + (me.clientX - startX) / this.pxPerUnit);
-            el.y = snap(initY + (me.clientY - startY) / this.pxPerUnit);
-            item.style.left = `${el.x * this.pxPerUnit}px`;
-            item.style.top = `${el.y * this.pxPerUnit}px`;
-            this.renderPropertyPanel();
-        };
-        const onUp = () => {
-            this.isDragging = false;
-            this.updatePreview();
-            this.renderPropertyPanel();
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-        };
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
-    }
-
-    public destroy() {
-        document.removeEventListener('keydown', this._keyHandler);
-        this.container.innerHTML = "";
-        this.container.classList.remove("qrlayout-designer");
-    }
-
-    private snapshot(): void {
-        this.undoStack.push(JSON.stringify(this.currentLayout));
-        if (this.undoStack.length > this.MAX_UNDO) this.undoStack.shift();
-        this.redoStack = [];
-        this.updateUndoButtons();
+    /** Debounced preview — used for typing inputs to avoid canvas thrashing */
+    private schedulePreview() {
+        if (this._previewTimer !== null) clearTimeout(this._previewTimer)
+        this._previewTimer = setTimeout(() => {
+            this._previewTimer = null
+            this.updatePreview()
+        }, 80)
     }
 
     private undo(): void {
-        if (this.undoStack.length === 0) return;
-        this.redoStack.push(JSON.stringify(this.currentLayout));
-        this.currentLayout = JSON.parse(this.undoStack.pop()!);
-        this.selectedElementId = null;
-        this.syncInputsFromLayout();
-        this.renderSampleDataEditor();
-        this.renderElementsList();
-        this.renderPropertyPanel();
-        this.updatePreview();
-        this.updateUndoButtons();
+        const layout = this.state.undo()
+        if (!layout) return
+        this.selectedIds.clear()
+        this.syncInputsFromLayout()
+        this.renderSampleDataEditor()
+        this.renderElementsList()
+        this.refreshPropertyPanel()
+        this.updatePreview()
+        this.updateUndoButtons()
     }
 
     private redo(): void {
-        if (this.redoStack.length === 0) return;
-        this.undoStack.push(JSON.stringify(this.currentLayout));
-        this.currentLayout = JSON.parse(this.redoStack.pop()!);
-        this.selectedElementId = null;
-        this.syncInputsFromLayout();
-        this.renderSampleDataEditor();
-        this.renderElementsList();
-        this.renderPropertyPanel();
-        this.updatePreview();
-        this.updateUndoButtons();
+        const layout = this.state.redo()
+        if (!layout) return
+        this.selectedIds.clear()
+        this.syncInputsFromLayout()
+        this.renderSampleDataEditor()
+        this.renderElementsList()
+        this.refreshPropertyPanel()
+        this.updatePreview()
+        this.updateUndoButtons()
     }
 
     private updateUndoButtons(): void {
-        if (this.undoBtn) this.undoBtn.disabled = this.undoStack.length === 0;
-        if (this.redoBtn) this.redoBtn.disabled = this.redoStack.length === 0;
+        this.undoBtn.disabled = !this.state.canUndo
+        this.redoBtn.disabled = !this.state.canRedo
     }
 
     private nudgeSelected(key: string, step: number): void {
-        const el = this.currentLayout.elements.find(e => e.id === this.selectedElementId);
-        if (!el) return;
-        this.snapshot();
-        if (key === 'ArrowLeft')  el.x = Math.max(0, el.x - step);
-        if (key === 'ArrowRight') el.x += step;
-        if (key === 'ArrowUp')    el.y = Math.max(0, el.y - step);
-        if (key === 'ArrowDown')  el.y += step;
-        this.updatePreview();
-        this.renderPropertyPanel();
+        const els = this.layout.elements.filter(e => this.selectedIds.has(e.id))
+        if (els.length === 0) return
+        this.state.snapshot()
+        els.forEach(el => {
+            if (key === 'ArrowLeft')  el.x = Math.max(0, el.x - step)
+            if (key === 'ArrowRight') el.x += step
+            if (key === 'ArrowUp')    el.y = Math.max(0, el.y - step)
+            if (key === 'ArrowDown')  el.y += step
+        })
+        this.updatePreview()
+        this.refreshPropertyPanel()
     }
 
     private duplicateSelected(): void {
-        const el = this.currentLayout.elements.find(e => e.id === this.selectedElementId);
-        if (!el) return;
-        this.snapshot();
-        const newEl: StickerElement = {
+        const els = this.layout.elements.filter(e => this.selectedIds.has(e.id))
+        if (els.length === 0) return
+        this.state.snapshot()
+        const newEls: StickerElement[] = els.map(el => ({
             ...el,
-            id: el.type[0] + Date.now(),
-            x: el.x + this.GRID_SIZE * 5,
-            y: el.y + this.GRID_SIZE * 5
-        };
-        this.currentLayout.elements.push(newEl);
-        this.selectElement(newEl.id);
-        this.updatePreview();
+            id: el.type[0] + Date.now() + Math.random().toString(36).slice(2, 4),
+            x: el.x + 5,
+            y: el.y + 5,
+        }))
+        this.layout.elements.push(...newEls)
+        this.selectedIds = new Set(newEls.map(e => e.id))
+        this.renderElementsList()
+        this.refreshPropertyPanel()
+        this.updatePreview()
     }
 
     private deleteSelectedElement(): void {
-        if (!this.selectedElementId) return;
-        this.snapshot();
-        this.currentLayout.elements = this.currentLayout.elements.filter(e => e.id !== this.selectedElementId);
-        this.selectElement(null);
-        this.updatePreview();
+        if (this.selectedIds.size === 0) return
+        this.state.snapshot()
+        this.layout.elements = this.layout.elements.filter(e => !this.selectedIds.has(e.id))
+        this.selectElement(null)
+        this.updatePreview()
     }
 
     private alignElement(direction: string): void {
-        const el = this.currentLayout.elements.find(e => e.id === this.selectedElementId);
-        if (!el) return;
-        this.snapshot();
-        const { width, height } = this.currentLayout;
+        const el = this.layout.elements.find(e => this.selectedIds.has(e.id))
+        if (!el) return
+        this.state.snapshot()
+        const { width, height } = this.layout
         switch (direction) {
-            case 'left':     el.x = 0; break;
-            case 'center-h': el.x = (width - el.w) / 2; break;
-            case 'right':    el.x = width - el.w; break;
-            case 'top':      el.y = 0; break;
-            case 'center-v': el.y = (height - el.h) / 2; break;
-            case 'bottom':   el.y = height - el.h; break;
+            case 'left':     el.x = 0; break
+            case 'center-h': el.x = (width - el.w) / 2; break
+            case 'right':    el.x = width - el.w; break
+            case 'top':      el.y = 0; break
+            case 'center-v': el.y = (height - el.h) / 2; break
+            case 'bottom':   el.y = height - el.h; break
         }
-        this.updatePreview();
-        this.renderPropertyPanel();
+        this.updatePreview()
+        this.refreshPropertyPanel()
+    }
+
+    private alignElementsRelative(direction: string): void {
+        const els = this.layout.elements.filter(e => this.selectedIds.has(e.id))
+        if (els.length < 2) return
+        this.state.snapshot()
+        const minX = Math.min(...els.map(e => e.x))
+        const maxX = Math.max(...els.map(e => e.x + e.w))
+        const minY = Math.min(...els.map(e => e.y))
+        const maxY = Math.max(...els.map(e => e.y + e.h))
+        switch (direction) {
+            case 'left':     els.forEach(e => { e.x = minX }); break
+            case 'center-h': els.forEach(e => { e.x = (minX + maxX) / 2 - e.w / 2 }); break
+            case 'right':    els.forEach(e => { e.x = maxX - e.w }); break
+            case 'top':      els.forEach(e => { e.y = minY }); break
+            case 'center-v': els.forEach(e => { e.y = (minY + maxY) / 2 - e.h / 2 }); break
+            case 'bottom':   els.forEach(e => { e.y = maxY - e.h }); break
+        }
+        this.updatePreview()
+        this.refreshPropertyPanel()
+    }
+
+    private alignAllToLabel(direction: string): void {
+        const els = this.layout.elements.filter(e => this.selectedIds.has(e.id))
+        if (els.length === 0) return
+        this.state.snapshot()
+        const { width, height } = this.layout
+        els.forEach(el => {
+            switch (direction) {
+                case 'left':     el.x = 0; break
+                case 'center-h': el.x = (width - el.w) / 2; break
+                case 'right':    el.x = width - el.w; break
+                case 'top':      el.y = 0; break
+                case 'center-v': el.y = (height - el.h) / 2; break
+                case 'bottom':   el.y = height - el.h; break
+            }
+        })
+        this.updatePreview()
+        this.refreshPropertyPanel()
     }
 
     private applyPreset(value: string): void {
@@ -1020,13 +610,129 @@ export class QRLayoutDesigner {
             '4x6in':    { width: 4,   height: 6,   unit: 'in' },
             '3x2in':    { width: 3,   height: 2,   unit: 'in' },
             '2x1in':    { width: 2,   height: 1,   unit: 'in' },
-        };
-        const preset = presets[value];
-        if (!preset) return;
-        this.currentLayout.width = preset.width;
-        this.currentLayout.height = preset.height;
-        this.currentLayout.unit = preset.unit;
-        this.syncInputsFromLayout();
-        this.updatePreview();
+        }
+        const preset = presets[value]
+        if (!preset) return
+        this.layout.width = preset.width
+        this.layout.height = preset.height
+        this.layout.unit = preset.unit
+        this.syncInputsFromLayout()
+        this.updatePreview()
+    }
+
+    private bindPreviewModals(): void {
+        this.container.querySelector('[data-action="preview-pdf"]')?.addEventListener('click', () => this.openPdfPreview())
+        this.container.querySelector('[data-action="preview-zpl"]')?.addEventListener('click', () => this.openZplPreview())
+        this.container.querySelectorAll('[data-action="close-pdf-modal"]').forEach(b =>
+            b.addEventListener('click', () => this.pdfModal.classList.remove('show'))
+        )
+        this.container.querySelectorAll('[data-action="close-zpl-modal"]').forEach(b =>
+            b.addEventListener('click', () => this.zplModal.classList.remove('show'))
+        )
+        this.container.querySelector('[data-action="refresh-zpl-preview"]')?.addEventListener('click', () => {
+            void this.refreshZplPreview()
+        })
+        this.container.querySelector('[data-action="copy-zpl"]')?.addEventListener('click', () => {
+            navigator.clipboard.writeText(this.zplCodeEl.value).catch(() => {})
+        })
+        this.zplDpiSelect.addEventListener('change', () => { void this.refreshZplPreview() })
+    }
+
+    private getSampleData(): Record<string, any> {
+        return (this.layout.targetEntity && this.entitySchemas[this.layout.targetEntity])
+            ? this.entitySchemas[this.layout.targetEntity].sampleData
+            : {}
+    }
+
+    private toInches(value: number, unit: string): number {
+        switch (unit) {
+            case 'in': return value
+            case 'mm': return value / 25.4
+            case 'cm': return value / 2.54
+            case 'px': return value / 96
+            default:   return value / 25.4
+        }
+    }
+
+    private openPdfPreview(): void {
+        this.pdfModal.classList.add('show')
+        this.pdfContainer.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-secondary);">Generating PDF…</div>`
+        void this.generatePdfPreview()
+    }
+
+    private async generatePdfPreview(): Promise<void> {
+        const sampleData = this.getSampleData()
+        try {
+            const doc = await this.canvasMgr.printer.exportToPDF(this.layout, [sampleData])
+            const blob = (doc as any).output('blob') as Blob
+            const url = URL.createObjectURL(blob)
+            this.pdfContainer.innerHTML = `
+                <div style="margin-bottom:10px;display:flex;gap:8px;">
+                    <a href="${url}" download="${this.layout.name || 'label'}.pdf" class="btn btn-outline btn-sm">Download PDF</a>
+                </div>
+                <iframe src="${url}" style="width:100%;height:480px;border:1px solid var(--border-color);border-radius:6px;"></iframe>
+            `
+        } catch {
+            try {
+                const dataUrl = await this.canvasMgr.printer.renderToDataURL(this.layout, sampleData)
+                this.pdfContainer.innerHTML = `
+                    <p style="font-size:0.8125rem;color:var(--text-secondary);margin-bottom:12px;padding:8px 12px;background:var(--panel-bg-alt);border-radius:6px;border:1px solid var(--border-color);">
+                        PDF export requires the optional <code>jspdf</code> package (<code>npm install jspdf</code>). Showing PNG preview:
+                    </p>
+                    <img src="${dataUrl}" style="max-width:100%;border:1px solid var(--border-color);border-radius:4px;display:block;">
+                `
+            } catch {
+                this.pdfContainer.innerHTML = `<div style="color:red;padding:20px;">Preview failed. Ensure your layout has elements.</div>`
+            }
+        }
+    }
+
+    private openZplPreview(): void {
+        this.zplModal.classList.add('show')
+        void this.refreshZplPreview()
+    }
+
+    private async refreshZplPreview(): Promise<void> {
+        const sampleData = this.getSampleData()
+        const dpi = Number.parseInt(this.zplDpiSelect.value, 10) as 203 | 300 | 600
+        const [zpl] = await this.canvasMgr.printer.exportToZPLAsync(this.layout, [sampleData], { dpi })
+        this.zplCodeEl.value = zpl
+
+        this.zplImageContainer.innerHTML = `<div style="color:var(--text-secondary);font-size:0.8125rem;padding:20px;">Loading Labelary preview…</div>`
+
+        try {
+            const dpmm = Math.round(dpi / 25.4)
+            const widthIn = this.toInches(this.layout.width, this.layout.unit).toFixed(3)
+            const heightIn = this.toInches(this.layout.height, this.layout.unit).toFixed(3)
+
+            const resp = await fetch(
+                `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${widthIn}x${heightIn}/0/`,
+                { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: zpl }
+            )
+            if (!resp.ok) throw new Error(`Labelary ${resp.status}`)
+
+            const blob = await resp.blob()
+            const prevUrl = URL.createObjectURL(blob)
+            this.zplImageContainer.innerHTML = `
+                <img src="${prevUrl}" alt="ZPL label preview" style="max-width:100%;max-height:400px;display:block;margin:auto;">
+            `
+        } catch {
+            this.zplImageContainer.innerHTML = `
+                <div style="font-size:0.8125rem;color:var(--text-secondary);padding:20px;text-align:center;line-height:1.7;">
+                    <div style="margin-bottom:6px;">&#9888; Labelary preview requires internet access.</div>
+                    <div>Copy the ZPL code and paste it at
+                        <a href="https://labelary.com/viewer.html" target="_blank" rel="noopener" style="color:var(--primary-color);">labelary.com/viewer.html</a>
+                    </div>
+                </div>
+            `
+        }
+    }
+
+    public destroy() {
+        if (this._previewTimer !== null) clearTimeout(this._previewTimer)
+        document.removeEventListener('keydown', this._keyHandler)
+        this._resizeObserver.disconnect()
+        this.container.innerHTML = ''
+        this.container.classList.remove('qrlayout-designer')
     }
 }
